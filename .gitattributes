@@ -1,0 +1,4 @@
+# Shell scripts must keep LF: a CRLF shebang breaks on Linux, and these run
+# on Ubuntu and the Jetson, not here.
+* text=auto eol=lf
+*.sh text eol=lf
