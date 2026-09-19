@@ -97,6 +97,12 @@ the Jetson ISO.
      sudo dd if=ubuntu-24.04.5.1-desktop-amd64.iso of=/dev/sdX bs=4M status=progress conv=fsync
      ```
 
+If nobody will be at the PC once the install is running (dual boot, the rest
+done over SSH from another machine), use the walk-away variant in
+[host-pc/README.md](../host-pc/README.md): the same stick, plus an
+autoinstall file that the installer fetches by URL. That is how H2-Host was
+installed on 2026-09-19.
+
 ROS 2 cannot be baked into the Ubuntu installer stick, and does not need to
 be: after the first boot it is one command (section 3, step 4). If you want
 the scripts on a stick anyway, copy the `scripts/` folder of this repository

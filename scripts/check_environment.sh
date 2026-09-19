@@ -53,9 +53,11 @@ distros=()
 for d in /opt/ros/*/; do
   [[ -d $d ]] || continue
   name=$(basename "$d")
-  version=$(dpkg-query -W -f='${Version}' "ros-${name}-ros-base" 2>/dev/null || echo "?")
+  variant=ros-base
+  dpkg-query -W "ros-${name}-desktop" > /dev/null 2>&1 && variant=desktop
+  version=$(dpkg-query -W -f='${Version}' "ros-${name}-${variant}" 2>/dev/null || echo "?")
   distros+=("$name")
-  row "ros2:" "$name (ros-${name}-ros-base $version)"
+  row "ros2:" "$name (ros-${name}-${variant} $version)"
 done
 [[ ${#distros[@]} -gt 0 ]] || row "ros2:" "not installed (run scripts/install_ros2_jazzy.sh)"
 
