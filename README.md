@@ -15,6 +15,7 @@ script clones into your workspace for you.
 | [`docs/environment.md`](docs/environment.md) | The guide: which versions, why, USB sticks, installing each machine, flashing the Jetson, wiring the PCA9685, troubleshooting |
 | [`scripts/install_ros2_jazzy.sh`](scripts/install_ros2_jazzy.sh) | Installs ROS 2 Jazzy on Ubuntu 24.04, sets `ROS_DOMAIN_ID`, sets up the `i2c` group, optionally builds `~/ros2_ws` |
 | [`scripts/check_environment.sh`](scripts/check_environment.sh) | Prints a one-line fingerprint of a machine, to compare two of them |
+| [`host-pc/`](host-pc/) | Walk-away install of Ubuntu 24.04 on a dual-boot host PC: an autoinstall file for the desktop installer and the steps around it, as used for H2-Host |
 
 ## Quick start
 
