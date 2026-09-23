@@ -367,6 +367,66 @@ README's Troubleshooting section has the rest.
 - **`/dev/i2c-N` permission denied**: log out and in after the script (group
   membership), or `sudo usermod -aG i2c $USER`.
 
+## 8. The robot's network
+
+Measured and decided on 2026-09-22, after an evening of chasing a robot that
+was on the network and yet unreachable.
+
+**Addresses are static.** ROS 2 discovery (Fast DDS) announces a node's
+addresses once, when the node starts. When the Orin's Wi-Fi re-associated
+and the router handed it a different lease (.7 one time, .31 the next),
+every running node kept talking to every other running node and became
+invisible to anything started afterwards - `ros2 topic hz`, a recorder,
+RViz. Static addresses make a reconnect harmless:
+
+```bash
+nmcli con modify "SpectrumSetup-E2DD" ipv4.method manual ipv4.addresses 192.168.1.7/24     ipv4.gateway 192.168.1.1 ipv4.dns 192.168.1.1 ipv4.ignore-auto-dns yes
+nmcli con modify "Wired connection 1" ipv4.method manual ipv4.addresses 192.168.1.78/24     ipv4.gateway 192.168.1.1 ipv4.dns 192.168.1.1 ipv4.ignore-auto-dns yes
+```
+
+Reserve the same addresses in the router so its pool can never collide
+with them. `jetson.local` (mDNS) also works from the laptop and H2-Host.
+
+**The Wi-Fi is locked to one access point.** The house SSID is broadcast by
+the Spectrum box (`2c:67:be:...`, upstairs, far side) and by an extender
+(`28:94:01:...`, upstairs, middle), each on 2.4 and 5 GHz. Connecting to
+each in turn from the robot's spot downstairs and running `iperf3` to a
+wired host:
+
+| Access point | Signal | robot -> wire | wire -> robot |
+|---|---|---|---|
+| extender 2.4 GHz (`28:94:01:B6:41:A4`) - what it picks by itself | -49 dBm | ~26 Mbit/s | ~30 Mbit/s |
+| extender 5 GHz | -62 dBm | ~0.5 | 2.5-19 |
+| **Spectrum box 2.4 GHz (`2C:67:BE:53:E2:E1`)** | -58 dBm | ~25-36 Mbit/s | **~56-107 Mbit/s** |
+| Spectrum box 5 GHz | too weak to hold | | |
+
+The extender wins on signal and loses on throughput, because everything it
+carries makes a second wireless hop. So:
+
+```bash
+nmcli con modify "SpectrumSetup-E2DD" 802-11-wireless.bssid 2C:67:BE:53:E2:E1 802-11-wireless.band bg
+nmcli con modify "SpectrumSetup-E2DD" wifi.powersave 2      # Realtek + power save = drops
+```
+
+The cost of the lock: where the box's 2.4 GHz does not reach, the robot has
+no home Wi-Fi rather than a poor one. `802-11-wireless.bssid ""` undoes it.
+Note the Realtek driver only lists the access point it is on while
+associated; scan after `nmcli dev disconnect` to see them all.
+
+**Profiles and priorities.** Home network priority 20, the laptop's hotspot
+(`DESKTOP-HIDD2LV 8567`, `192.168.137.x`) priority 10: home wins when both
+are visible, the hotspot takes over automatically away from home. Windows'
+mobile hotspot has been seen dropping the robot silently (association kept,
+no traffic), so it is a field convenience, not a link to trust.
+
+**Still open.** A second, longer-range, IP-native link for the field - the
+old HC-12 serial radio is retired. Candidates: Wi-Fi HaLow (802.11ah,
+900 MHz, ~1 km, a few Mbit/s, one USB adapter per end) or an LTE modem with
+a data SIM. Whatever it is, it carries SSH and a small lifeline (heartbeat,
+status, stop); the ROS traffic stays pinned to the Wi-Fi interface. Also:
+the Windows laptop does not answer ping (its firewall), so measure links
+to it with TCP, not `ping`.
+
 ## Sources
 
 - Ubuntu 24.04 images and checksums: <https://releases.ubuntu.com/24.04/>;
