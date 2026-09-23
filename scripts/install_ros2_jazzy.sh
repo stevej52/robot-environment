@@ -299,7 +299,7 @@ setup_i2c() {
   if id -nG "$TARGET_USER" | tr ' ' '\n' | grep -qx i2c; then
     log "$TARGET_USER is already in the i2c group"
   else
-    run_root usermod -aG i2c "$TARGET_USER"
+    run_root usermod -aG i2c,render,video "$TARGET_USER"
     NEED_RELOGIN=true
   fi
   # Make sure the devices are actually owned by that group.

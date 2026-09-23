@@ -335,6 +335,15 @@ README's Troubleshooting section has the rest.
 
 ## 7. If something does not work
 
+- **Headless Gazebo dies with "Failed to create dummy render window" or
+  `libEGL warning: failed to open /dev/dri/renderD128: Permission denied`**:
+  the user is not in the `render` and `video` groups. A desktop login grants
+  the GPU to that session, which hides the problem until the PC is rebooted
+  and nobody logs in. `sudo usermod -aG render,video $USER`, then log in again.
+  (`install_ros2_jazzy.sh` now adds both.)
+- **The simulator and the real robot see each other's nodes**: they share
+  `ROS_DOMAIN_ID`. Run the simulator with a different one while the robot is
+  up (`export ROS_DOMAIN_ID=77`); domain 7 is the robot's.
 - **`install_ros2_jazzy.sh` stops with "this is Ubuntu ..."**: it is doing
   its job. Only 24.04 gets Jazzy binaries.
 - **`ros-dev-tools` has unmet dependencies**: the apt sources list only the
