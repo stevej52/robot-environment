@@ -141,9 +141,22 @@ if [ "$DO_CONTAINER" -eq 1 ]; then
             -v "$ISAAC_WS:/workspaces/isaac_ros-dev" -v /dev/bus/usb:/dev/bus/usb -v /dev/input:/dev/input \
             --workdir /workspaces/isaac_ros-dev --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
             --name "$CONTAINER" "$BUILT_IMAGE" sleep infinity
-        run docker exec -u root "$CONTAINER" bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ros-jazzy-isaac-ros-visual-slam'
+        # cuVSLAM, and nvblox's node + messages only: the ros-jazzy-isaac-ros-nvblox
+        # meta-package pulls the people-segmentation DNN stack (Triton, gigabytes).
+        run docker exec -u root "$CONTAINER" bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ros-jazzy-isaac-ros-visual-slam ros-jazzy-nvblox-ros ros-jazzy-nvblox-msgs'
         run docker commit "$CONTAINER" "$IMAGE"
         run docker rm -f "$CONTAINER"
+    fi
+    # NVIDIA's realsense_splitter (routes projector-on/off frames to nvblox/cuVSLAM)
+    # is not shipped as a deb: build it from the release-4.6 checkout, inside the
+    # container, into the mounted workspace. nvblox_base.yaml comes from the same repo.
+    if [ ! -f "$ISAAC_WS/install/realsense_splitter/lib/librealsense_splitter_component.so" ]; then
+        say "building realsense_splitter inside the container"
+        [ -d "$ISAAC_WS/src/isaac_ros_nvblox" ] || run git clone -q --depth 1 -b release-4.6 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git "$ISAAC_WS/src/isaac_ros_nvblox"
+        run rm -f "$ISAAC_WS/src/isaac_ros_nvblox/nvblox_examples/realsense_splitter/COLCON_IGNORE"
+        [ -f "$ISAAC_WS/nvblox_base.yaml" ] || run cp "$GPU_ROBOT_DIR/cuvslam_d435/nvblox_base.yaml" "$ISAAC_WS/"
+        [ -f "$ISAAC_WS/cuvslam_nvblox_d435.launch.py" ] || run cp "$GPU_ROBOT_DIR/cuvslam_d435/cuvslam_nvblox_d435.launch.py" "$ISAAC_WS/"
+        run docker run --rm --privileged --gpus all -v "$ISAAC_WS:/workspaces/isaac_ros-dev" --workdir /workspaces/isaac_ros-dev --entrypoint bash "$IMAGE" -c 'source /opt/ros/jazzy/setup.bash && colcon build --symlink-install --packages-select realsense_splitter --cmake-args -DCMAKE_BUILD_TYPE=Release'
     fi
     if docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER"; then
         say "container $CONTAINER exists"

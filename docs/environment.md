@@ -461,6 +461,10 @@ anywhere but a Jetson on JetPack 7.2:
 ```
 
 It expects `ros2_gpu_robot` and `jetnano_robot` cloned under `~/ros2_ws/src`.
+The `--container` stage also installs nvblox (`ros-jazzy-nvblox-ros` and
+`-msgs` only - the `isaac-ros-nvblox` meta-package pulls the people-segmentation
+DNN stack) and builds NVIDIA's `realsense_splitter` from the `isaac_ros_nvblox`
+release-4.6 checkout inside the container, since it is not shipped as a deb.
 Two things that cost a night to learn: the container's nodes run as root, and
 the host user cannot read root's Fast DDS shared memory, so the container's
 ROS processes run with a UDP-only DDS profile (`fastdds_udp_only.xml`) or the
