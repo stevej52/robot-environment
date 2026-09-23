@@ -427,6 +427,51 @@ status, stop); the ROS traffic stays pinned to the Wi-Fi interface. Also:
 the Windows laptop does not answer ping (its firewall), so measure links
 to it with TCP, not `ping`.
 
+## 9. The GPU: Isaac ROS 4.6 in a container (Jetson only)
+
+The robot's visual odometry runs on the Jetson's GPU: NVIDIA cuVSLAM from
+Isaac ROS 4.6, stereo on the RealSense's infrared pair, 89 Hz where the CPU
+version managed 10 (the numbers are in `jetnano_robot/docs/vo-sweep-2026-09-23.md`,
+the recipe in `ros2_gpu_robot/cuvslam_d435/README.md`). It is the one place
+this guide's rules bend, and it is worth being exact about how:
+
+- **It is Jetson only.** The host PC has no NVIDIA GPU, so the "same
+  environment everywhere" rule is kept by the launch files, not the packages:
+  `robot.launch.py` defaults to `vo:=cuvslam` on the robot, the simulator and
+  the host use `vo:=rtabmap`, and the CPU path stays installed on both.
+- **The source build is NVIDIA's, inside NVIDIA's container.** Isaac ROS pins
+  its own RealSense driver (librealsense 2.56.3 built with the RSUSB backend,
+  realsense-ros 4.56.3) and builds it into the image. Nothing on the host's
+  Jazzy install changes; the host keeps `ros-jazzy-realsense2-camera` from apt.
+  The venv and bare-metal modes of NVIDIA's CLI remove the host's OpenCV
+  packages, so they are not used.
+- **Pinned to `release-4.6`.** Isaac ROS 4.6.0 (2026-08-18) added JetPack 7.2
+  and is the last release for ROS 2 Jazzy; 5.0.0 (2026-09-21) moved to ROS 2
+  Lyrical. The apt source, the CLI and the docs URLs all carry `release-4.6`;
+  do not follow the un-versioned "latest" pages.
+
+`scripts/install_isaac_ros_46.sh` does it, in stages, and refuses to run
+anywhere but a Jetson on JetPack 7.2:
+
+```bash
+~/robot-environment/scripts/install_isaac_ros_46.sh              # apt source, CLI, docker group, workspace
+~/robot-environment/scripts/install_isaac_ros_46.sh --build      # the image: about 1.5 h, 19 GB on the NVMe
+~/robot-environment/scripts/install_isaac_ros_46.sh --container  # the isaac_vo container, cuVSLAM installed and committed
+~/robot-environment/scripts/install_isaac_ros_46.sh --units      # start the container and the robot at boot
+```
+
+It expects `ros2_gpu_robot` and `jetnano_robot` cloned under `~/ros2_ws/src`.
+Two things that cost a night to learn: the container's nodes run as root, and
+the host user cannot read root's Fast DDS shared memory, so the container's
+ROS processes run with a UDP-only DDS profile (`fastdds_udp_only.xml`) or the
+host sees the publisher and no data; and the container must not be started
+with `--pid=host`, or a `pkill` inside it reaches the host's launches.
+
+At boot, `isaac-vo.service` waits for the GPU driver (it is not ready when
+docker starts, and a container created too early fails with "nvml error:
+not supported") and then starts the container; `jetnano-robot.service` runs
+`robot.launch.py` after it. `sudo systemctl stop jetnano-robot` for bench work.
+
 ## Sources
 
 - Ubuntu 24.04 images and checksums: <https://releases.ubuntu.com/24.04/>;
