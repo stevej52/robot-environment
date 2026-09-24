@@ -176,10 +176,10 @@ fi
 if [ "$DO_UNITS" -eq 1 ]; then
     UNITS="$JETNANO_ROBOT_DIR/jetnano_bringup/systemd"
     [ -d "$UNITS" ] || { echo "$UNITS not found; clone jetnano_robot into ~/ros2_ws/src first" >&2; exit 1; }
-    say "installing isaac-vo.service and jetnano-robot.service"
-    run sudo cp "$UNITS"/isaac-vo.service "$UNITS"/jetnano-robot.service /etc/systemd/system/
+    say "installing isaac-vo.service, jetnano-robot.service and wifi-watchdog.service"
+    run sudo cp "$UNITS"/isaac-vo.service "$UNITS"/jetnano-robot.service "$UNITS"/wifi-watchdog.service /etc/systemd/system/
     run sudo systemctl daemon-reload
-    run sudo systemctl enable isaac-vo.service jetnano-robot.service
+    run sudo systemctl enable isaac-vo.service jetnano-robot.service wifi-watchdog.service
 fi
 
 say "done. Check: isaac-ros status; docker ps; systemctl status isaac-vo jetnano-robot"
