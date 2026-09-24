@@ -344,6 +344,16 @@ README's Troubleshooting section has the rest.
 - **The simulator and the real robot see each other's nodes**: they share
   `ROS_DOMAIN_ID`. Run the simulator with a different one while the robot is
   up (`export ROS_DOMAIN_ID=77`); domain 7 is the robot's.
+- **Nodes on one machine stop hearing each other the moment you log out**,
+  while another machine still receives everything over the network: logind's
+  default `RemoveIPC=yes` deletes a normal user's shared memory (`/dev/shm`) when
+  their last session ends, and that is Fast DDS's local transport. Anything
+  started from a service or left running after an SSH session (`nohup`,
+  `setsid`, `KillUserProcesses=no`) is affected; `ls -l /proc/<pid>/fd` of a
+  node shows `fastrtps_*` files as `(deleted)`. `install_ros2_jazzy.sh` writes
+  `/etc/systemd/logind.conf.d/robot-removeipc.conf` (`RemoveIPC=no`) on every
+  machine. Found on the robot 2026-09-23, after two "the IMU went quiet"
+  incidents that were this.
 - **`install_ros2_jazzy.sh` stops with "this is Ubuntu ..."**: it is doing
   its job. Only 24.04 gets Jazzy binaries.
 - **`ros-dev-tools` has unmet dependencies**: the apt sources list only the
@@ -484,6 +494,14 @@ At boot, `isaac-vo.service` waits for the GPU driver (it is not ready when
 docker starts, and a container created too early fails with "nvml error:
 not supported") and then starts the container; `jetnano-robot.service` runs
 `robot.launch.py` after it. `sudo systemctl stop jetnano-robot` for bench work.
+
+The camera's video feed lives in the container too (`--container` installs
+`ros-jazzy-compressed-image-transport`, `-compressed-depth-image-transport` and
+`ros-jazzy-web-video-server` there and re-commits the image): on the Jetson host
+those debs would replace JetPack's OpenCV 4.8 with Ubuntu's 4.6 and remove
+`nvidia-jetpack` - the same reason NVIDIA's venv and bare-metal modes are not
+used. The result is a JPEG topic for RViz and an MJPEG stream for any browser
+on port 8080; `ros2_gpu_robot/cuvslam_d435/README.md`, "Watching the camera".
 
 ## Sources
 

@@ -318,6 +318,27 @@ setup_i2c() {
   fi
 }
 
+# Keeps logind from deleting the user's shared memory when their last session
+# ends (RemoveIPC=yes is the default). Fast DDS uses /dev/shm between nodes on
+# one machine, so anything still running after an SSH logout - the robot's
+# systemd service, a nohup'd simulator - lost every local topic at that moment
+# while the network path to other machines kept working (robot, 2026-09-23).
+setup_logind() {
+  local conf=/etc/systemd/logind.conf.d/robot-removeipc.conf
+  if [[ -f $conf ]]; then
+    log "logind already keeps user IPC ($conf)"
+    return
+  fi
+  log "writing $conf (RemoveIPC=no)"
+  if $DRY_RUN; then
+    echo "+ write $conf: [Login] RemoveIPC=no; systemctl restart systemd-logind"
+  else
+    sudo_cmd mkdir -p "$(dirname "$conf")"
+    printf '[Login]\n# ROS 2 nodes keep running after a logout; their Fast DDS shared memory must too.\nRemoveIPC=no\n' | sudo_cmd tee "$conf" > /dev/null
+    sudo_cmd systemctl restart systemd-logind
+  fi
+}
+
 write_bashrc() {
   local rc="$TARGET_HOME/.bashrc" block
   block="# >>> ros2_pca9685: ROS 2 ${ROS_DISTRO_NAME} (scripts/install_ros2_jazzy.sh) >>>"
@@ -386,6 +407,7 @@ main() {
   install_ros2
   init_rosdep
   setup_i2c
+  setup_logind
   write_bashrc
   if $WORKSPACE; then build_workspace; fi
   summary

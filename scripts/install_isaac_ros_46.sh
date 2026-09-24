@@ -52,6 +52,8 @@ JETNANO_ROBOT_DIR=${JETNANO_ROBOT_DIR:-$HOME/ros2_ws/src/jetnano_robot}
 CONTAINER=isaac_vo
 IMAGE=isaac_vo:4.6
 BUILT_IMAGE=cached_isaac_run_dev_image_local:latest
+# The camera's JPEG stream and the browser feed (cuvslam_d435/README.md, "Watching the camera")
+VIDEO_PKGS="ros-jazzy-compressed-image-transport ros-jazzy-compressed-depth-image-transport ros-jazzy-web-video-server"
 
 DO_BUILD=0; DO_CONTAINER=0; DO_UNITS=0; DRY_RUN=0
 
@@ -104,8 +106,11 @@ fi
 grep -q 'ISAAC_ROS_WS' ~/.bashrc || run sh -c "echo 'export ISAAC_ROS_WS=\${HOME}/workspaces/isaac_ros-dev/' >> ~/.bashrc"
 run mkdir -p "$ISAAC_WS/src"
 if [ -d "$GPU_ROBOT_DIR/cuvslam_d435" ]; then
-    say "copying the cuVSLAM launch file and DDS profile into $ISAAC_WS"
-    run cp "$GPU_ROBOT_DIR/cuvslam_d435/cuvslam_d435_stereo.launch.py" "$GPU_ROBOT_DIR/cuvslam_d435/fastdds_udp_only.xml" "$ISAAC_WS/"
+    say "copying the launch files, nvblox parameters and DDS profile into $ISAAC_WS"
+    run cp "$GPU_ROBOT_DIR/cuvslam_d435/cuvslam_d435_stereo.launch.py" \
+           "$GPU_ROBOT_DIR/cuvslam_d435/cuvslam_nvblox_d435.launch.py" \
+           "$GPU_ROBOT_DIR/cuvslam_d435/nvblox_base.yaml" \
+           "$GPU_ROBOT_DIR/cuvslam_d435/fastdds_udp_only.xml" "$ISAAC_WS/"
     run mkdir -p ~/.config/isaac-ros-cli
     run cp "$GPU_ROBOT_DIR/cuvslam_d435/isaac-ros-cli-config.yaml" ~/.config/isaac-ros-cli/config.yaml
 else
@@ -143,7 +148,7 @@ if [ "$DO_CONTAINER" -eq 1 ]; then
             --name "$CONTAINER" "$BUILT_IMAGE" sleep infinity
         # cuVSLAM, and nvblox's node + messages only: the ros-jazzy-isaac-ros-nvblox
         # meta-package pulls the people-segmentation DNN stack (Triton, gigabytes).
-        run docker exec -u root "$CONTAINER" bash -c 'apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ros-jazzy-isaac-ros-visual-slam ros-jazzy-nvblox-ros ros-jazzy-nvblox-msgs'
+        run docker exec -u root "$CONTAINER" bash -c "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ros-jazzy-isaac-ros-visual-slam ros-jazzy-nvblox-ros ros-jazzy-nvblox-msgs $VIDEO_PKGS"
         run docker commit "$CONTAINER" "$IMAGE"
         run docker rm -f "$CONTAINER"
     fi
@@ -154,8 +159,6 @@ if [ "$DO_CONTAINER" -eq 1 ]; then
         say "building realsense_splitter inside the container"
         [ -d "$ISAAC_WS/src/isaac_ros_nvblox" ] || run git clone -q --depth 1 -b release-4.6 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git "$ISAAC_WS/src/isaac_ros_nvblox"
         run rm -f "$ISAAC_WS/src/isaac_ros_nvblox/nvblox_examples/realsense_splitter/COLCON_IGNORE"
-        [ -f "$ISAAC_WS/nvblox_base.yaml" ] || run cp "$GPU_ROBOT_DIR/cuvslam_d435/nvblox_base.yaml" "$ISAAC_WS/"
-        [ -f "$ISAAC_WS/cuvslam_nvblox_d435.launch.py" ] || run cp "$GPU_ROBOT_DIR/cuvslam_d435/cuvslam_nvblox_d435.launch.py" "$ISAAC_WS/"
         run docker run --rm --privileged --gpus all -v "$ISAAC_WS:/workspaces/isaac_ros-dev" --workdir /workspaces/isaac_ros-dev --entrypoint bash "$IMAGE" -c 'source /opt/ros/jazzy/setup.bash && colcon build --symlink-install --packages-select realsense_splitter --cmake-args -DCMAKE_BUILD_TYPE=Release'
     fi
     if docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER"; then
@@ -169,6 +172,19 @@ if [ "$DO_CONTAINER" -eq 1 ]; then
             -v "$ISAAC_WS:/workspaces/isaac_ros-dev" -v /dev/bus/usb:/dev/bus/usb -v /dev/input:/dev/input \
             --workdir /workspaces/isaac_ros-dev --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
             --name "$CONTAINER" "$IMAGE" sleep infinity
+    fi
+    # The video feed's packages were added after the image was first committed
+    # (2026-09-23): a container from an older image gets them here, and the
+    # image is re-committed so a recreated container keeps them. They live in
+    # the container because on the Jetson host apt would replace JetPack's
+    # OpenCV and remove nvidia-jetpack to install them.
+    if docker exec "$CONTAINER" dpkg-query -W $VIDEO_PKGS >/dev/null 2>&1; then
+        say "video feed packages already in $CONTAINER"
+    else
+        say "adding the video feed packages to $CONTAINER and re-committing $IMAGE"
+        docker ps --format '{{.Names}}' | grep -qx "$CONTAINER" || run docker start "$CONTAINER"
+        run docker exec -u root "$CONTAINER" bash -c "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $VIDEO_PKGS"
+        run docker commit --pause=false "$CONTAINER" "$IMAGE"
     fi
 fi
 
