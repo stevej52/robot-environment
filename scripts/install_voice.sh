@@ -21,6 +21,9 @@ cd "$MODELS"
 for m in sherpa-onnx-moonshine-tiny-en-int8 sherpa-onnx-whisper-tiny.en; do
     [ -d "$m" ] || curl -sSL "$REL/$m.tar.bz2" | tar xj
 done
+# Her English voice (Piper, via the same library) for "Rosie, speak English".
+TTS=https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models
+[ -d vits-piper-en_US-hfc_female-medium ] || curl -sSL "$TTS/vits-piper-en_US-hfc_female-medium.tar.bz2" | tar xj
 
 "$VENV/bin/python3" -c "import sherpa_onnx; print('sherpa-onnx', sherpa_onnx.__version__)"
 du -sh "$MODELS"/*
