@@ -208,7 +208,10 @@ if [ "$DO_UNITS" -eq 1 ]; then
     say "installing jetson-clocks, isaac-vo, jetnano-robot, jetnano-slam and wifi-watchdog services"
     run sudo cp "$UNITS"/jetson-clocks.service "$UNITS"/isaac-vo.service "$UNITS"/jetnano-robot.service "$UNITS"/jetnano-slam.service "$UNITS"/wifi-watchdog.service /etc/systemd/system/
     run sudo systemctl daemon-reload
-    run sudo systemctl enable jetson-clocks.service isaac-vo.service jetnano-robot.service jetnano-slam.service wifi-watchdog.service
+    # jetnano-slam is installed but not enabled: mapping starts on request
+    # ("Rosie, start mapping"), with the robot at its parking spot.
+    run sudo systemctl enable jetson-clocks.service isaac-vo.service jetnano-robot.service wifi-watchdog.service
+    run sudo systemctl disable jetnano-slam.service 2>/dev/null || true
 fi
 
 say "done. Check: isaac-ros status; docker ps; systemctl status isaac-vo jetnano-robot"
