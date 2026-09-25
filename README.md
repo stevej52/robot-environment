@@ -8,14 +8,24 @@ This repository holds the *machine setup*. The robot's actual driver code lives
 in [`ros2_pca9685`](https://github.com/stevej52/ros2_pca9685), which the install
 script clones into your workspace for you.
 
+**Rebuilding the whole robot, Rosie, from scratch?** Start with
+[`REBUILD.md`](REBUILD.md): the parts, the four machines and every step in
+order, from flashing the Jetson to her voice, her brain and the backups.
+
 ## Contents
 
 | Path | What it does |
 |---|---|
+| [`REBUILD.md`](REBUILD.md) | Rebuilding Rosie from scratch, in order, and restoring from a backup |
 | [`docs/environment.md`](docs/environment.md) | The guide: which versions, why, USB sticks, installing each machine, flashing the Jetson, wiring the PCA9685, troubleshooting |
 | [`scripts/install_ros2_jazzy.sh`](scripts/install_ros2_jazzy.sh) | Installs ROS 2 Jazzy on Ubuntu 24.04, sets `ROS_DOMAIN_ID`, sets up the `i2c` group, optionally builds `~/ros2_ws` |
 | [`scripts/check_environment.sh`](scripts/check_environment.sh) | Prints a one-line fingerprint of a machine, to compare two of them |
 | [`scripts/install_isaac_ros_46.sh`](scripts/install_isaac_ros_46.sh) | Jetson only: Isaac ROS 4.6 in a container for the GPU visual odometry, and the boot units (guide section 9) |
+| [`scripts/install_system_settings.sh`](scripts/install_system_settings.sh) | Jetson only: NVIDIA as Docker's default runtime, and the power button shutting down a headless robot ([`system/`](system/)) |
+| [`scripts/install_voice.sh`](scripts/install_voice.sh) | Jetson only: her hearing, English voice and brain client in `~/venv-voice`, and the speech models |
+| [`scripts/add-rosie-key.sh`](scripts/add-rosie-key.sh) | Puts the Claude API key on the robot from any Linux machine, at a hidden prompt |
+| [`scripts/jedipc_brain.md`](scripts/jedipc_brain.md), [`scripts/jedipc/`](scripts/jedipc/) | Her local language model on the Windows PC upstairs (llama.cpp, Vulkan, Qwen 2.5 14B) |
+| [`scripts/backup_robot_state.sh`](scripts/backup_robot_state.sh) | Everything on the robot that is not in git, in one archive, secrets removed |
 
 ## Quick start
 
