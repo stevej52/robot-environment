@@ -13,7 +13,9 @@ MODELS="${MODELS:-$HOME/voice/models}"
 REL=https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models
 
 [ -x "$VENV/bin/python3" ] || python3 -m venv --system-site-packages "$VENV"
-"$VENV/bin/pip" install -q --upgrade sherpa-onnx
+# sherpa-onnx: hearing and her voice; anthropic: her brain (jetnano_bringup brain,
+# needs ANTHROPIC_API_KEY in /etc/default/jetnano-robot, root-only)
+"$VENV/bin/pip" install -q --upgrade sherpa-onnx anthropic
 
 mkdir -p "$MODELS"
 cd "$MODELS"
