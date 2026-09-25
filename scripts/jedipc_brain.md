@@ -47,3 +47,8 @@ Everything lives on **G:** (`G:\rosie`); C: has no room (2.5 GB free on
 - Another model: put the .gguf in `G:\rosie\models`, change the `-m` path in
   `brain.cmd`, restart the task. 16 GB of video memory fits a 14B at 4 bit
   with room for context; an 8B at 4 bit (5 GB) is about twice as fast.
+
+- `image_disk0.ps1` stopped 2.3 MB before the end: a buffered FileStream on a
+  raw disk tries to fill its whole buffer on the last short read and runs off
+  the end ("The drive cannot find the sector requested"). `image_tail.ps1`
+  reads the rest unbuffered. Use buffer size 1, or exact multiples, on raw disks.
