@@ -139,7 +139,7 @@ if [ "$DO_CONTAINER" -eq 1 ]; then
         docker image inspect "$BUILT_IMAGE" >/dev/null 2>&1 || { echo "no image; run with --build first" >&2; exit 1; }
         say "creating $CONTAINER from $BUILT_IMAGE and installing cuVSLAM into it"
         run docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-        run docker run -d --restart no --privileged --network host --ipc host --gpus all \
+        run docker run -d --restart no --privileged --network host --ipc host --runtime nvidia \
             -e ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-7}" -e ISAAC_ROS_WS=/workspaces/isaac_ros-dev \
             -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all \
             -e HOST_USER_UID="$(id -u)" -e HOST_USER_GID="$(id -g)" -e USER="$USER" -e TERM=xterm \
@@ -159,13 +159,26 @@ if [ "$DO_CONTAINER" -eq 1 ]; then
         say "building realsense_splitter inside the container"
         [ -d "$ISAAC_WS/src/isaac_ros_nvblox" ] || run git clone -q --depth 1 -b release-4.6 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git "$ISAAC_WS/src/isaac_ros_nvblox"
         run rm -f "$ISAAC_WS/src/isaac_ros_nvblox/nvblox_examples/realsense_splitter/COLCON_IGNORE"
-        run docker run --rm --privileged --gpus all -v "$ISAAC_WS:/workspaces/isaac_ros-dev" --workdir /workspaces/isaac_ros-dev --entrypoint bash "$IMAGE" -c 'source /opt/ros/jazzy/setup.bash && colcon build --symlink-install --packages-select realsense_splitter --cmake-args -DCMAKE_BUILD_TYPE=Release'
+        run docker run --rm --privileged --runtime nvidia -v "$ISAAC_WS:/workspaces/isaac_ros-dev" --workdir /workspaces/isaac_ros-dev --entrypoint bash "$IMAGE" -c 'source /opt/ros/jazzy/setup.bash && colcon build --symlink-install --packages-select realsense_splitter --cmake-args -DCMAKE_BUILD_TYPE=Release'
+    fi
+    # --runtime nvidia, not --gpus all: with the toolkit in its Jetson ("csv")
+    # mode, --gpus invokes the runtime hook directly and the container refuses
+    # to start ("invoking the NVIDIA Container Runtime Hook directly ... is
+    # not supported"). It bit on 2026-09-24; a container created with --gpus
+    # keeps runc as its runtime and must be recreated.
+    if docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER"; then
+        if [ "$(docker inspect "$CONTAINER" --format '{{.HostConfig.Runtime}}')" != "nvidia" ]; then
+            say "container $CONTAINER was created without --runtime nvidia; recreating it from $IMAGE"
+            run docker rm -f "$CONTAINER" >/dev/null
+        else
+            say "container $CONTAINER exists"
+        fi
     fi
     if docker ps -a --format '{{.Names}}' | grep -qx "$CONTAINER"; then
-        say "container $CONTAINER exists"
+        :
     else
         say "creating $CONTAINER from $IMAGE (systemd's isaac-vo.service starts it; --restart no on purpose)"
-        run docker run -d --restart no --privileged --network host --ipc host --gpus all \
+        run docker run -d --restart no --privileged --network host --ipc host --runtime nvidia \
             -e ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-7}" -e ISAAC_ROS_WS=/workspaces/isaac_ros-dev \
             -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all \
             -e HOST_USER_UID="$(id -u)" -e HOST_USER_GID="$(id -g)" -e USER="$USER" -e TERM=xterm \
