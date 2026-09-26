@@ -1,0 +1,3 @@
+// Rosie: the kernel cmdline has firmware_class.path=/etc/firmware (JetPack 7.2). Keep a real copy of
+// the GPU firmware there so loading never goes through the /lib symlink (ELOOP -> GPU dead at boot).
+DPkg::Post-Invoke { "if [ -d /usr/lib/firmware/nvidia/ga10b ]; then mkdir -p /etc/firmware/nvidia && cp -a /usr/lib/firmware/nvidia/ga10b /etc/firmware/nvidia/; fi"; };

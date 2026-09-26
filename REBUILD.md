@@ -96,7 +96,10 @@ hours, from NVIDIA's servers), creates the container with the NVIDIA runtime
 and installs the services: `jetson-clocks`, `isaac-vo`, `jetnano-robot`,
 `jetnano-slam` and `wifi-watchdog`. Mapping is installed but **not** started
 at boot: she maps when told to (below). The second makes NVIDIA Docker's
-default runtime and lets the case button shut her down. Detail and numbers:
+default runtime, lets the case button shut her down, puts a real copy of the
+GPU firmware where JetPack 7.2's kernel looks first (without it the GPU failed
+to start on 2 of 31 boots) and makes the boot-time GPU description always use
+Jetson mode. Detail and numbers:
 docs/environment.md section 9, ros2_gpu_robot `cuvslam_d435/README.md`.
 
 The robot's own settings go in `/etc/default/jetnano-robot` (root-only):
