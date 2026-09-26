@@ -22,6 +22,12 @@
 #                                the boot-time GPU description (CDI spec) is
 #                                always generated in Jetson (csv) mode; auto
 #                                sometimes chose nvml and wrote none
+#   /etc/apt/preferences.d/05-rosie-ros-packages-from-ros.pref
+#                                NVIDIA's Isaac ROS apt repo (pinned at 600)
+#                                ships forks of ros-jazzy-* packages versioned
+#                                99.0.0 (ros-jazzy-launch, 2026-09-26) meant for
+#                                its containers; this keeps the host's ROS from
+#                                packages.ros.org
 #
 # RemoveIPC=no (logind) is written by install_ros2_jazzy.sh; the services by
 # install_isaac_ros_46.sh --units. Password-free sudo for the robot's user is
@@ -46,3 +52,5 @@ sudo install -D -m 644 "$HERE/system/apt-99-rosie-etc-firmware" /etc/apt/apt.con
 echo "GPU firmware: real copy in /etc/firmware, refreshed after every apt run (used from the next boot)"
 sudo install -D -m 644 "$HERE/system/nvidia-cdi-refresh.env" /etc/nvidia-container-toolkit/nvidia-cdi-refresh.env
 echo "CDI spec: always generated in csv (Jetson) mode (from the next boot)"
+sudo install -D -m 644 "$HERE/system/apt-05-rosie-ros-packages-from-ros.pref" /etc/apt/preferences.d/05-rosie-ros-packages-from-ros.pref
+echo "apt: the host's ROS packages always come from packages.ros.org, never NVIDIA's 99.0.0 forks"

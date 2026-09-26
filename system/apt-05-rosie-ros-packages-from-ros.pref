@@ -1,0 +1,6 @@
+# Rosie: the host runs ROS from packages.ros.org. NVIDIA's Isaac ROS repo ships forks of some
+# ros-jazzy-* packages versioned 99.0.0 (seen: ros-jazzy-launch) meant for its containers.
+# Never let them replace the host's ROS (2026-09-26). Named 05- so it is read before NVIDIA's pins.
+Package: ros-jazzy-*
+Pin: origin "isaac.download.nvidia.com"
+Pin-Priority: 50
