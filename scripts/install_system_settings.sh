@@ -38,11 +38,13 @@
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 
-if [ -f /etc/docker/daemon.json ] && ! grep -q '"default-runtime": "nvidia"' /etc/docker/daemon.json; then
-    echo "/etc/docker/daemon.json exists with other settings: merge $HERE/system/docker-daemon.json by hand"
-else
+if [ ! -f /etc/docker/daemon.json ]; then
     sudo install -D -m 644 "$HERE/system/docker-daemon.json" /etc/docker/daemon.json
     echo "Docker: nvidia is the default runtime (after a reboot or: sudo systemctl restart docker)"
+elif grep -q '"default-runtime": "nvidia"' /etc/docker/daemon.json; then
+    echo "Docker: /etc/docker/daemon.json already makes nvidia the default runtime: left as it is"
+else
+    echo "/etc/docker/daemon.json exists with other settings: merge $HERE/system/docker-daemon.json by hand"
 fi
 sudo install -D -m 644 "$HERE/system/logind-robot-power-button.conf" /etc/systemd/logind.conf.d/robot-power-button.conf
 echo "logind: power button shuts down (after a reboot)"
