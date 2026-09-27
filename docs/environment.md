@@ -406,7 +406,21 @@ nmcli con modify "Wired connection 1" ipv4.method manual ipv4.addresses 192.168.
 Reserve the same addresses in the router so its pool can never collide
 with them. `jetson.local` (mDNS) also works from the laptop and H2-Host.
 
-**The Wi-Fi is locked to one access point.** The house SSID is broadcast by
+**Since 2026-09-25 the Wi-Fi is locked to the downstairs access point's
+5 GHz radio** (same SSID, wired to the router): about 590 Mbit/s up and 660
+down from the bench, against 13-36 on the router's 2.4 GHz.
+
+```bash
+nmcli con modify "SpectrumSetup-E2DD" 802-11-wireless.bssid B8:FB:B3:60:27:09 802-11-wireless.band a
+```
+
+If a wall kills 5 GHz where she drives, the access point's 2.4 GHz radio
+(`B8:FB:B3:60:27:08`) is the fallback. `wifi-watchdog.service` bounces the
+connection after two minutes without the gateway. The survey below is how
+the first lock (to the router, 2026-09-22) was chosen, before the access
+point existed.
+
+**The first lock, 2026-09-22.** The house SSID is broadcast by
 the Spectrum box (`2c:67:be:...`, upstairs, far side) and by an extender
 (`28:94:01:...`, upstairs, middle), each on 2.4 and 5 GHz. Connecting to
 each in turn from the robot's spot downstairs and running `iperf3` to a

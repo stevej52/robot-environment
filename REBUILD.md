@@ -35,9 +35,16 @@ real robot.
   Hobbywing 1040 crawler ESC, Castle Creations BEC for the servos, 3S LiPo
   (Deans plug), a 12 V rail straight to the Orin's barrel jack.
 - **PWM**: Adafruit PCA9685 at I²C address 0x40 on the Orin's bus 7:
-  channel 0 ESC, 1 front steering, 2 rear steering.
-- **Sensors**: Intel RealSense D435 (USB 3), RPLidar A1M8 (USB, CP2102
-  adapter, mounted facing backwards), Bosch BNO055 IMU on I²C.
+  channel 0 ESC, 1 front steering, 2 rear steering, 5 headlight relay
+  (CW-025, high trigger), 8 camera pan, 9 camera tilt. The steering servos
+  take their power straight from the BEC (only the signal comes from the
+  board); the pan-tilt and the relay coil run from the board's V+. A 4700 µF
+  capacitor on the Orin's 12 V input and another on the servo BEC's output.
+- **Sensors**: Intel RealSense D435 (USB 3, **firmware 5.12.10.0 - see
+  step 3**), RPLidar A1M8 (USB, CP2102 adapter, mounted facing backwards),
+  Bosch BNO055 IMU on I²C, two IMX219 cameras (Raspberry Pi Camera v2 type)
+  on the two CSI ports, the one on port A in the pan-tilt, mounted upside
+  down.
 - **Audio**: a USB speaker (ALSA card `UACDemoV10`) and a small USB
   microphone (card `Device`) on a short extension, on foam, away from the
   lidar motor.
@@ -45,7 +52,13 @@ real robot.
   5 GHz radio.
 - **Planned, with software ready**: INA219 battery monitor (address 0x41,
   voltage only), four VL53L0X cliff sensors behind a TCA9548A mux (0x70), a
-  pan-tilt IMX477 camera, two relays for lights, a CR2032 for the RTC.
+  CR2032 for the RTC.
+- **Fitted, software still to write**: the headlight relay on channel 5
+  (a page button and a voice word), ground lights on channel 6, and a ROS
+  node for the two CSI cameras (they stream with `nvarguscamerasrc
+  sensor-id=0|1 wbmode=4`, `nvvidconv flip-method=2` for the upside-down
+  one). An Arducam IMX477 was tried and returned: it needs Arducam's own
+  driver, which has no build for this JetPack.
 
 Wiring, measured positions and what is still a guess: jetnano_robot
 `README.md` (the I²C section) and `docs/bench-calibration-2026-09-21.md`.
@@ -58,7 +71,10 @@ Wiring, measured positions and what is still a guess: jetnano_robot
    during the first boot decides whether the setup screen appears at all.
 2. Power mode **MAXN_SUPER**. Fixed address 192.168.1.7 and the Wi-Fi locked
    to the access point's 5 GHz BSSID: section 8.
-3. **Password-free sudo** for the robot's user, if you want it. The robot
+3. The CSI cameras: `sudo /opt/nvidia/jetson-io/config-by-hardware.py -n
+   2="Camera IMX219 Dual"` and reboot; `dmesg | grep imx219` should show both
+   bound (a `-121` means no camera answering, `-110` a badly seated ribbon).
+4. **Password-free sudo** for the robot's user, if you want it. The robot
    was built with it (`/etc/sudoers.d/90-nopasswd-sudo`:
    `%sudo ALL=(ALL:ALL) NOPASSWD:ALL`) because two of her features call
    sudo on their own: the watchdog resets the lidar's USB port, and "Rosie,
@@ -102,6 +118,16 @@ to start on 2 of 31 boots) and makes the boot-time GPU description always use
 Jetson mode. Detail and numbers:
 docs/environment.md section 9, ros2_gpu_robot `cuvslam_d435/README.md`.
 
+**Keep the D435 on firmware 5.12.10.0.** 5.16.0.1 (the version Isaac ROS
+4.6 recommends) was tried on 2026-09-26: it claims to alternate the IR
+projector frame by frame but leaves it on in every frame, the odometry then
+sees a fixed dot pattern and never notices her moving, and she drove three
+metres into the curtains on a calibration run. Both firmware files are in
+`~/workspaces/isaac_ros-dev/firmware/`. Before trying any other firmware,
+check that the emitter-off frames really have no speckle (the metadata's
+`frame_emitter_mode` against the image; ros2_gpu_robot
+`cuvslam_d435/README.md`).
+
 The robot's own settings go in `/etc/default/jetnano-robot` (root-only):
 
 ```
@@ -123,6 +149,10 @@ Anthropic SDK for her brain) and downloads the models to `~/voice/models`:
 a voice-activity detector, the Moonshine speech-to-text model and the Piper
 voice. The second writes her robot sounds to `~/sounds`. The cliff sensors
 use a second venv, `~/venv-sensors`: jetnano_robot `README.md`, I²C section.
+
+Then run `install_system_settings.sh` (step 3) once more: it copies the
+power-on and shutdown sounds from `~/sounds` into place, and on the first
+pass they did not exist yet.
 
 ## 5. Her local brain (the PC upstairs)
 
@@ -151,7 +181,15 @@ never shown, never logged and never in a repository or a backup.
 - **Camera pitch and roll**: plane fit, ros2_gpu_robot `tools/camera_pitch.py`,
   into the URDF's `camera_rpy`.
 - **Lidar**: mounted backwards, `lidar_rpy 0 0 pi` in the URDF.
-- **ESC and steering**: neutral 1375 us, `ros2_pca9685` config `rc_car.yaml`.
+- **ESC and steering**: jetnano_bringup `config/pca9685.yaml`. Neutral
+  1375 µs; the start points by `ros2 run jetnano_bringup
+  throttle_calibration` on the floor, battery in, Steve at the page's STOP
+  (0.327 both ways in 2026-09); the steering homes by straight runs on the
+  floor (front 81 / rear 87).
+- **Pan-tilt**: with the horns off, send both servos 1500 µs, fit the horns
+  straight and level, then find the centre and reach (pan 1425 µs dead ahead
+  with a 700-2450 µs range; tilt 1500 µs, 850-2150 µs; both run backwards).
+  The numbers are in `pca9685.yaml` and `motion_watch`'s launch parameters.
 - **Microphone**: her clap threshold and listening gain are parameters of
   the `ears` and `listen` nodes; measure the room with
   `ros2 topic echo /sound/level`.
