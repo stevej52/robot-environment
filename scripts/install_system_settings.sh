@@ -18,6 +18,9 @@
 #                                the /lib symlink failed with ELOOP on 2 of 31
 #                                boots and the GPU never started (2026-09-23 and
 #                                -26; NVIDIA-AI-IOT/jetson-ai-lab issue #427)
+#   rosie-poweron.service + /usr/local/sbin/rosie-poweron + /usr/local/share/rosie/poweron.wav
+#                                her power-on sound, as soon as the speaker
+#                                exists at boot (needs ~/sounds/on1.wav)
 #   /usr/lib/systemd/system-shutdown/rosie-goodbye + /usr/local/share/rosie/shutdown.wav
 #                                her powering-down sound, played by systemd
 #                                after everything else has stopped (needs
@@ -66,4 +69,13 @@ if [ -f "$HOME/sounds/off1.wav" ]; then
     echo "shutdown sound: installed (the last thing she does before the power goes)"
 else
     echo "shutdown sound: hook installed, but ~/sounds/off1.wav is missing - run make_voice ~/sounds, then this again"
+fi
+sudo install -D -m 755 "$HERE/system/rosie-poweron" /usr/local/sbin/rosie-poweron
+sudo install -D -m 644 "$HERE/system/rosie-poweron.service" /etc/systemd/system/rosie-poweron.service
+if [ -f "$HOME/sounds/on1.wav" ]; then
+    sudo install -D -m 644 "$HOME/sounds/on1.wav" /usr/local/share/rosie/poweron.wav
+    sudo systemctl daemon-reload && sudo systemctl enable -q rosie-poweron.service
+    echo "power-on sound: installed and enabled (plays as soon as the speaker exists at boot)"
+else
+    echo "power-on sound: unit installed but ~/sounds/on1.wav is missing - run make_voice ~/sounds, then this again"
 fi

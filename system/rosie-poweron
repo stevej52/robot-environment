@@ -1,0 +1,18 @@
+#!/bin/sh
+# Rosie's first sound: played as soon as her USB speaker exists at boot, well
+# before her software is up (Steve, 2026-09-26: a power-up sound, the mirror
+# of the shutdown hook). rosie-poweron.service runs this once per boot; it
+# waits up to 30 s for the speaker to appear, plays, and exits. The volume is
+# whatever ALSA restored from the last run (sounds.py sets 80 % every start).
+WAV=/usr/local/share/rosie/poweron.wav
+[ -f "$WAV" ] || exit 0
+i=0
+while [ $i -lt 60 ]; do
+    if aplay -l 2>/dev/null | grep -q UACDemoV10; then
+        sleep 0.5                              # let the device settle
+        exec timeout 6 aplay -q -D plughw:CARD=UACDemoV10 "$WAV"
+    fi
+    sleep 0.5
+    i=$((i + 1))
+done
+exit 0
