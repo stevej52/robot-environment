@@ -18,6 +18,10 @@
 #                                the /lib symlink failed with ELOOP on 2 of 31
 #                                boots and the GPU never started (2026-09-23 and
 #                                -26; NVIDIA-AI-IOT/jetson-ai-lab issue #427)
+#   /usr/lib/systemd/system-shutdown/rosie-goodbye + /usr/local/share/rosie/shutdown.wav
+#                                her powering-down sound, played by systemd
+#                                after everything else has stopped (needs
+#                                ~/sounds/off1.wav from make_voice first)
 #   /etc/nvidia-container-toolkit/nvidia-cdi-refresh.env
 #                                the boot-time GPU description (CDI spec) is
 #                                always generated in Jetson (csv) mode; auto
@@ -56,3 +60,10 @@ sudo install -D -m 644 "$HERE/system/nvidia-cdi-refresh.env" /etc/nvidia-contain
 echo "CDI spec: always generated in csv (Jetson) mode (from the next boot)"
 sudo install -D -m 644 "$HERE/system/apt-05-rosie-ros-packages-from-ros.pref" /etc/apt/preferences.d/05-rosie-ros-packages-from-ros.pref
 echo "apt: the host's ROS packages always come from packages.ros.org, never NVIDIA's 99.0.0 forks"
+sudo install -D -m 755 "$HERE/system/rosie-goodbye" /usr/lib/systemd/system-shutdown/rosie-goodbye
+if [ -f "$HOME/sounds/off1.wav" ]; then
+    sudo install -D -m 644 "$HOME/sounds/off1.wav" /usr/local/share/rosie/shutdown.wav
+    echo "shutdown sound: installed (the last thing she does before the power goes)"
+else
+    echo "shutdown sound: hook installed, but ~/sounds/off1.wav is missing - run make_voice ~/sounds, then this again"
+fi
