@@ -89,9 +89,9 @@ fi
 for s in firefox thunderbird gnome-46-2404 gtk-common-themes mesa-2404; do
     if snap list "$s" >/dev/null 2>&1; then sudo snap remove "$s"; fi
 done
-if dpkg -s firefox thunderbird >/dev/null 2>&1; then
-    sudo apt-get remove -y firefox thunderbird
-fi
+for p in firefox thunderbird; do
+    if dpkg -s "$p" >/dev/null 2>&1; then sudo apt-get remove -y "$p"; fi
+done
 sudo snap refresh --hold >/dev/null
 echo "snaps: no desktop apps, auto-refresh held"
 if systemctl is-enabled -q ModemManager 2>/dev/null; then
