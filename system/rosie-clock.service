@@ -1,0 +1,15 @@
+[Unit]
+Description=Rosie: the clock without an RTC battery - the last saved time at boot, saved at shutdown
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target time-set.target systemd-timesyncd.service shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/rosie-clock restore
+ExecStop=/usr/local/sbin/rosie-clock save
+
+[Install]
+WantedBy=sysinit.target

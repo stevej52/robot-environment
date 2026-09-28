@@ -1,0 +1,23 @@
+#!/bin/sh
+# Rosie has no RTC battery: a cold start boots the clock at 1970 (or systemd's build date)
+# until Wi-Fi brings NTP. rosie-clock remembers the time instead (2026-09-28, Steve: "can you
+# just have it change the date first thing when it boots up?"):
+#   restore  at boot, before anything else: the last saved time, if it is later than now
+#   save     every 10 min (rosie-clock-save.timer) and at shutdown: now, if later than saved
+# The restored time is behind by however long she was off; NTP corrects it within seconds of
+# the Wi-Fi coming up, and jetnano-robot.service waits for that before starting the nodes.
+F=/var/lib/rosie-clock
+now=$(date -u +%s)
+saved=$(cat "$F" 2>/dev/null || echo 0)
+case "$1" in
+    restore)
+        if [ "$saved" -gt "$now" ]; then
+            date -u -s "@$saved" > /dev/null && echo "rosie-clock: clock set to the last saved time, $(date)"
+        fi ;;
+    save)
+        if [ "$now" -gt "$saved" ]; then
+            echo "$now" > "$F.new" && mv "$F.new" "$F"
+        fi ;;
+    *)
+        echo "usage: rosie-clock restore|save" >&2; exit 2 ;;
+esac

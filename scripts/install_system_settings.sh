@@ -144,3 +144,12 @@ sudo install -D -m 644 "$HERE/system/systemd-watchdog-rosie.conf" /etc/systemd/s
 sudo systemctl daemon-reexec
 echo "hardware watchdog: 20 s (a hang that cannot panic resets her in 20 s, was 2 min)"
 
+sudo install -D -m 755 "$HERE/system/rosie-clock" /usr/local/sbin/rosie-clock
+for u in rosie-clock.service rosie-clock-save.service rosie-clock-save.timer; do
+    sudo install -D -m 644 "$HERE/system/$u" "/etc/systemd/system/$u"
+done
+sudo systemctl daemon-reload
+sudo systemctl enable --now rosie-clock.service rosie-clock-save.timer
+sudo /usr/local/sbin/rosie-clock save
+echo "clock: the last saved time at boot instead of 1970 (saved every 10 min and at shutdown; NTP corrects it)"
+

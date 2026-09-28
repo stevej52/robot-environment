@@ -1,0 +1,6 @@
+[Unit]
+Description=Rosie: save the time for the next boot (rosie-clock)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rosie-clock save

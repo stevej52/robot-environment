@@ -1,0 +1,9 @@
+[Unit]
+Description=Rosie: save the time every 10 minutes (a crash or power cut skips the shutdown save)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target
