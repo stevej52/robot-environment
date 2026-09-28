@@ -1,0 +1,12 @@
+# Rosie: keep every USB and PCI device awake (runtime power management "on").
+#
+# A robot has nothing to gain from a device dozing off and everything to lose: the
+# RealSense and both USB hubs were on "auto" (autosuspend after 2 s idle - between
+# camera pipeline restarts, for one), the PCIe root ports too. Kept awake, the board
+# drew the same 9.4-9.5 W (2026-09-28). The lidar's CP2102, the mic, the speaker and
+# the Bluetooth radio were already "on".
+#
+# Installed by robot-environment/scripts/install_system_settings.sh as
+# /etc/udev/rules.d/50-rosie-no-autosuspend.rules.
+ACTION=="add|bind", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"
+ACTION=="add|bind", SUBSYSTEM=="pci", TEST=="power/control", ATTR{power/control}="on"

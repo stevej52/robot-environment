@@ -42,6 +42,19 @@
 #                                (1.5 GB, 2026-09-27; headless robot)
 #   ModemManager disabled        no modem, but it probes every new USB serial
 #                                device - the lidar's adapter among them
+#   no power saving (2026-09-28, the board drew the same 9.4-9.5 W with all of it off):
+#   nvme_core.default_ps_max_latency_us=0 on every APPEND line of
+#                                /boot/extlinux/extlinux.conf: the SSD's own power
+#                                states (APST) off. One boot stalled ~25 s on
+#                                "nvme ... I/O tag ... timeout, completion polled"
+#                                (a missed interrupt; 1 of 38 boots). Backup kept
+#                                as extlinux.conf.before-nvme-apst-off
+#   /etc/udev/rules.d/50-rosie-no-autosuspend.rules
+#                                every USB and PCI device kept awake (runtime PM on)
+#   sleep/suspend/hibernate targets masked: a robot that suspends is a dead robot
+#   (GPU engine power gating off: jetson-clocks.service, installed with the units;
+#   PCIe ASPM was already off on every link, CPU idle states off by jetson_clocks,
+#   Wi-Fi power save off by NetworkManager)
 #
 # RemoveIPC=no (logind) is written by install_ros2_jazzy.sh; the services by
 # install_isaac_ros_46.sh --units. Password-free sudo for the robot's user is
@@ -98,3 +111,16 @@ if systemctl is-enabled -q ModemManager 2>/dev/null; then
     sudo systemctl disable --now ModemManager
 fi
 echo "ModemManager: disabled (no modem; it probes USB serial devices)"
+EXT=/boot/extlinux/extlinux.conf
+if [ -f "$EXT" ] && ! grep -q 'nvme_core.default_ps_max_latency_us' "$EXT"; then
+    sudo cp -a "$EXT" "$EXT.before-nvme-apst-off"
+    sudo sed -i -E '/^\s*APPEND /s/$/ nvme_core.default_ps_max_latency_us=0/' "$EXT"
+    echo "SSD power states (APST): off from the next boot (backup: $EXT.before-nvme-apst-off)"
+else
+    echo "SSD power states (APST): already off in $EXT (or no extlinux.conf)"
+fi
+sudo install -D -m 644 "$HERE/system/udev-50-rosie-no-autosuspend.rules" /etc/udev/rules.d/50-rosie-no-autosuspend.rules
+sudo udevadm control --reload
+echo "USB and PCI devices: kept awake (udev rule; plugged-in devices from now, all from the next boot)"
+sudo systemctl mask -q sleep.target suspend.target hibernate.target hybrid-sleep.target
+echo "sleep, suspend and hibernate: masked"
