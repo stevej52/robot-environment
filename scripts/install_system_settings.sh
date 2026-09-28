@@ -49,6 +49,11 @@
 #                                "nvme ... I/O tag ... timeout, completion polled"
 #                                (a missed interrupt; 1 of 38 boots). Backup kept
 #                                as extlinux.conf.before-nvme-apst-off
+#   usbcore.autosuspend=-1 on every APPEND line: no USB device ever autosuspends.
+#                                The RealSense is set back to "auto" by the kernel
+#                                whenever the camera pipeline opens or closes it
+#                                (after any udev rule has run); with the delay at -1
+#                                it still never suspends (runtime_suspended_time 0)
 #   /etc/udev/rules.d/99-rosie-no-autosuspend.rules
 #                                every USB and PCI device kept awake (runtime PM on)
 #   sleep/suspend/hibernate targets masked: a robot that suspends is a dead robot
@@ -112,6 +117,11 @@ if systemctl is-enabled -q ModemManager 2>/dev/null; then
 fi
 echo "ModemManager: disabled (no modem; it probes USB serial devices)"
 EXT=/boot/extlinux/extlinux.conf
+if [ -f "$EXT" ] && ! grep -q 'usbcore.autosuspend' "$EXT"; then
+    sudo cp -a "$EXT" "$EXT.before-usb-autosuspend-off"
+    sudo sed -i -E '/^\s*APPEND /s/$/ usbcore.autosuspend=-1/' "$EXT"
+    echo "USB autosuspend: never, from the next boot (backup: $EXT.before-usb-autosuspend-off)"
+fi
 if [ -f "$EXT" ] && ! grep -q 'nvme_core.default_ps_max_latency_us' "$EXT"; then
     sudo cp -a "$EXT" "$EXT.before-nvme-apst-off"
     sudo sed -i -E '/^\s*APPEND /s/$/ nvme_core.default_ps_max_latency_us=0/' "$EXT"
