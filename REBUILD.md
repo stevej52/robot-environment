@@ -95,9 +95,21 @@ cd ~/ros2_ws && rosdep install --from-paths src --ignore-src -y && colcon build
 ```
 
 Optional, for lidar odometry (`robot.launch.py lidar_odom:=true`, off by
-default): `sudo apt install ros-jazzy-mola-lidar-odometry`. Check first with
-`apt-get -s install` that it removes nothing; on the Jetson the NVIDIA ROS
-fork (99.0.0) is pinned out and must stay out.
+default): `sudo apt install ros-jazzy-mola-lidar-odometry` on the host PC.
+On the Jetson, NOT like that: apt's resolver then swaps NVIDIA's OpenCV
+(libopencv-dev 4.8) for Ubuntu's 4.6 and removes `nvidia-jetpack`,
+`nvidia-jetpack-dev` and `nvidia-opencv-dev` (2026-09-27, JetPack 7.2.1).
+Naming NVIDIA's packages in the same command keeps them, and then it only adds
+37 packages:
+
+```
+apt-get -s install ros-jazzy-mola-lidar-odometry libopencv-dev=4.8.0-4-g18251aa nvidia-opencv-dev | grep -c ^Remv   # must print 0
+sudo apt-get install ros-jazzy-mola-lidar-odometry libopencv-dev=4.8.0-4-g18251aa nvidia-opencv-dev
+```
+
+Use the libopencv-dev version `dpkg -l libopencv-dev` shows. Check any apt
+install on the Jetson with `apt-get -s` first; the NVIDIA ROS fork (99.0.0)
+is pinned out and must stay out.
 
 The install script also stops logind from deleting the shared memory ROS 2
 uses when you log out (RemoveIPC=no). Then the device rule, the groups and
