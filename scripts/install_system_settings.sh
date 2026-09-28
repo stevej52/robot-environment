@@ -135,3 +135,12 @@ sudo udevadm control --reload
 echo "USB and PCI devices: kept awake (udev rule; plugged-in devices from now, all from the next boot)"
 sudo systemctl mask -q sleep.target suspend.target hibernate.target hybrid-sleep.target
 echo "sleep, suspend and hibernate: masked"
+
+sudo install -D -m 644 "$HERE/system/sysctl-90-rosie-panic.conf" /etc/sysctl.d/90-rosie-panic.conf
+sudo sysctl -q -p /etc/sysctl.d/90-rosie-panic.conf
+echo "kernel crash: reboot after 5 s (kernel.panic = 5, panic_on_oops = 1)"
+# zz-: after JetPack's watchdog.conf (120 s), so this one wins
+sudo install -D -m 644 "$HERE/system/systemd-watchdog-rosie.conf" /etc/systemd/system.conf.d/zz-rosie-watchdog.conf
+sudo systemctl daemon-reexec
+echo "hardware watchdog: 20 s (a hang that cannot panic resets her in 20 s, was 2 min)"
+
