@@ -35,6 +35,13 @@
 #                                99.0.0 (ros-jazzy-launch, 2026-09-26) meant for
 #                                its containers; this keeps the host's ROS from
 #                                packages.ros.org
+#   no Firefox / Thunderbird     their snaps (and the gnome, gtk and mesa snaps
+#                                only they used) plus the apt placeholders that
+#                                reinstall them; snap auto-refresh held, so snapd
+#                                does not download and swap snaps mid-drive
+#                                (1.5 GB, 2026-09-27; headless robot)
+#   ModemManager disabled        no modem, but it probes every new USB serial
+#                                device - the lidar's adapter among them
 #
 # RemoveIPC=no (logind) is written by install_ros2_jazzy.sh; the services by
 # install_isaac_ros_46.sh --units. Password-free sudo for the robot's user is
@@ -79,3 +86,15 @@ if [ -f "$HOME/sounds/on1.wav" ]; then
 else
     echo "power-on sound: unit installed but ~/sounds/on1.wav is missing - run make_voice ~/sounds, then this again"
 fi
+for s in firefox thunderbird gnome-46-2404 gtk-common-themes mesa-2404; do
+    if snap list "$s" >/dev/null 2>&1; then sudo snap remove "$s"; fi
+done
+if dpkg -s firefox thunderbird >/dev/null 2>&1; then
+    sudo apt-get remove -y firefox thunderbird
+fi
+sudo snap refresh --hold >/dev/null
+echo "snaps: no desktop apps, auto-refresh held"
+if systemctl is-enabled -q ModemManager 2>/dev/null; then
+    sudo systemctl disable --now ModemManager
+fi
+echo "ModemManager: disabled (no modem; it probes USB serial devices)"
