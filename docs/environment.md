@@ -514,8 +514,10 @@ The camera's video feed lives in the container too (`--container` installs
 `ros-jazzy-web-video-server` there and re-commits the image): on the Jetson host
 those debs would replace JetPack's OpenCV 4.8 with Ubuntu's 4.6 and remove
 `nvidia-jetpack` - the same reason NVIDIA's venv and bare-metal modes are not
-used. The result is a JPEG topic for RViz and an MJPEG stream for any browser
-on port 8080; `ros2_gpu_robot/cuvslam_d435/README.md`, "Watching the camera".
+used. The result is a JPEG topic for RViz. The browser stream on port 8080
+(`web_video_server`) was retired on 2026-09-27 and is off by default: browsers
+get all three cameras from `jetnano_bringup` `csi_cameras` on port 8082;
+`ros2_gpu_robot/cuvslam_d435/README.md`, "Watching the camera".
 
 ## Sources
 
