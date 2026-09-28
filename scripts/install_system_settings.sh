@@ -153,3 +153,33 @@ sudo systemctl enable --now rosie-clock.service rosie-clock-save.timer
 sudo /usr/local/sbin/rosie-clock save
 echo "clock: the last saved time at boot instead of 1970 (saved every 10 min and at shutdown; NTP corrects it)"
 
+# 40-pin header pin 7 as a GPIO output: the safety relay on the PCA9685's OE (ros2_pca9685
+# output_enable_pin). JetPack leaves every header GPIO pad tristated (input only), so the
+# pin needs this overlay, appended to the DEFAULT boot entry's OVERLAYS (from the next boot).
+dtc -@ -q -I dts -O dtb -o /tmp/rosie-hdr40-pin7-output.dtbo "$HERE/system/rosie-hdr40-pin7-output.dts"
+sudo install -m 644 /tmp/rosie-hdr40-pin7-output.dtbo /boot/rosie-hdr40-pin7-output.dtbo
+EXT=/boot/extlinux/extlinux.conf
+if ! grep -q "rosie-hdr40-pin7-output.dtbo" "$EXT"; then
+    sudo cp -a "$EXT" "$EXT.before-rosie-pin7"
+    sudo python3 - "$EXT" <<'PY'
+import re, sys
+path = sys.argv[1]
+lines = open(path).read().split('
+')
+default = next(l.split()[1] for l in lines if l.startswith('DEFAULT'))
+start = next(i for i, l in enumerate(lines) if l.strip() == f'LABEL {default}')
+end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith('LABEL')), len(lines))
+dtbo = '/boot/rosie-hdr40-pin7-output.dtbo'
+for i in range(start, end):
+    if lines[i].strip().startswith('OVERLAYS'):
+        lines[i] = lines[i].rstrip() + ',' + dtbo
+        break
+else:
+    fdt = next(i for i in range(start, end) if lines[i].strip().startswith('FDT'))
+    lines.insert(fdt + 1, '	OVERLAYS ' + dtbo)
+open(path, 'w').write('
+'.join(lines))
+PY
+fi
+echo "header pin 7: a GPIO output (overlay in the $(grep ^DEFAULT $EXT | cut -d' ' -f2) boot entry; from the next boot)"
+

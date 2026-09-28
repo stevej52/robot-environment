@@ -1,0 +1,44 @@
+// Rosie: 40-pin header pin 7 (soc_gpio59_pac6, GPIO PAC.06) as a GPIO output.
+//
+// It drives the safety relay (CW-025, trigger jumper on H) on the PCA9685's OE pin:
+// ros2_pca9685 holds it high once every channel is at its start value, and a crash or
+// reset drops it, taking every servo and throttle signal away.
+//
+// JetPack's boot pinmux leaves every header GPIO pad an input: tristate=1, so the output
+// driver is off and a GPIO "output" never reaches the pin (2026-09-28: Jetson.GPIO drove
+// PAC.06 high and low six times, the relay never saw it; pinconf-groups showed
+// tristate=1). This is the same setting NVIDIA's own 40-pin overlays use for pin 7
+// (tristate 0), plus a pull-down so the pin rests low - relay off - whenever nothing
+// drives it (booting, the node stopped).
+//
+// Build and install: robot-environment scripts/install_system_settings.sh (dtc -@, then
+// appended to the JetsonIO entry's OVERLAYS in /boot/extlinux/extlinux.conf; a reboot).
+/dts-v1/;
+/plugin/;
+
+/ {
+	overlay-name = "Rosie header pin 7 GPIO output";
+	jetson-header-name = "Jetson 40pin Header";
+	compatible = "nvidia,p3768-0000+p3767-0000", "nvidia,p3768-0000+p3767-0001",
+		     "nvidia,p3768-0000+p3767-0003", "nvidia,p3768-0000+p3767-0004",
+		     "nvidia,p3768-0000+p3767-0005", "nvidia,p3768-0000+p3767-0000-super",
+		     "nvidia,p3768-0000+p3767-0001-super", "nvidia,p3768-0000+p3767-0003-super",
+		     "nvidia,p3768-0000+p3767-0004-super", "nvidia,p3768-0000+p3767-0005-super";
+
+	fragment@0 {
+		target = <&pinmux>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&rosie_hdr40_pinmux>;
+			rosie_hdr40_pinmux: rosie-hdr40-pinmux {
+				hdr40-pin7 {
+					nvidia,pins = "soc_gpio59_pac6";
+					nvidia,function = "aud";
+					nvidia,pull = <1>;		/* down: rests low, relay off */
+					nvidia,tristate = <0>;		/* output driver on */
+					nvidia,enable-input = <1>;	/* so its level can be read back */
+				};
+			};
+		};
+	};
+};
