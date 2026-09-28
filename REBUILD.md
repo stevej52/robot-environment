@@ -94,6 +94,11 @@ git clone https://github.com/stevej52/ros2_gpu_robot.git
 cd ~/ros2_ws && rosdep install --from-paths src --ignore-src -y && colcon build
 ```
 
+Optional, for lidar odometry (`robot.launch.py lidar_odom:=true`, off by
+default): `sudo apt install ros-jazzy-mola-lidar-odometry`. Check first with
+`apt-get -s install` that it removes nothing; on the Jetson the NVIDIA ROS
+fork (99.0.0) is pinned out and must stay out.
+
 The install script also stops logind from deleting the shared memory ROS 2
 uses when you log out (RemoveIPC=no). Then the device rule, the groups and
 the rest of the robot's own setup: jetnano_robot `README.md`, "Installing".
