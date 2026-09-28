@@ -6,7 +6,11 @@
 # drew the same 9.4-9.5 W (2026-09-28). The lidar's CP2102, the mic, the speaker and
 # the Bluetooth radio were already "on".
 #
+# 99-, not 50-: Ubuntu's 60-autosuspend.rules turns autosuspend back on at every "add"
+# for devices its hwdb lists - the xHCI root hubs and the RealSense among them - so
+# this has to run after it.
+#
 # Installed by robot-environment/scripts/install_system_settings.sh as
-# /etc/udev/rules.d/50-rosie-no-autosuspend.rules.
+# /etc/udev/rules.d/99-rosie-no-autosuspend.rules.
 ACTION=="add|bind", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"
 ACTION=="add|bind", SUBSYSTEM=="pci", TEST=="power/control", ATTR{power/control}="on"

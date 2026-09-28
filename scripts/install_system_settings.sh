@@ -49,7 +49,7 @@
 #                                "nvme ... I/O tag ... timeout, completion polled"
 #                                (a missed interrupt; 1 of 38 boots). Backup kept
 #                                as extlinux.conf.before-nvme-apst-off
-#   /etc/udev/rules.d/50-rosie-no-autosuspend.rules
+#   /etc/udev/rules.d/99-rosie-no-autosuspend.rules
 #                                every USB and PCI device kept awake (runtime PM on)
 #   sleep/suspend/hibernate targets masked: a robot that suspends is a dead robot
 #   (GPU engine power gating off: jetson-clocks.service, installed with the units;
@@ -119,7 +119,8 @@ if [ -f "$EXT" ] && ! grep -q 'nvme_core.default_ps_max_latency_us' "$EXT"; then
 else
     echo "SSD power states (APST): already off in $EXT (or no extlinux.conf)"
 fi
-sudo install -D -m 644 "$HERE/system/udev-50-rosie-no-autosuspend.rules" /etc/udev/rules.d/50-rosie-no-autosuspend.rules
+sudo install -D -m 644 "$HERE/system/udev-99-rosie-no-autosuspend.rules" /etc/udev/rules.d/99-rosie-no-autosuspend.rules
+sudo rm -f /etc/udev/rules.d/50-rosie-no-autosuspend.rules      # the first name ran too early
 sudo udevadm control --reload
 echo "USB and PCI devices: kept awake (udev rule; plugged-in devices from now, all from the next boot)"
 sudo systemctl mask -q sleep.target suspend.target hibernate.target hybrid-sleep.target
