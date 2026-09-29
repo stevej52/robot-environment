@@ -148,6 +148,11 @@ sudo install -D -m 644 "$HERE/system/udev-99-rosie-respeaker.rules" /etc/udev/ru
 sudo udevadm control --reload && sudo udevadm trigger --attr-match=idVendor=2886
 echo "reSpeaker: its USB control interface open to plugdev (direction of arrival, speech detection)"
 
+# dnsmasq came with the base image (2025-07-02) and nothing uses it; its service failed at every
+# boot ("port 53: Address already in use" - systemd-resolved has it). Off (2026-09-29).
+sudo systemctl disable --now dnsmasq.service 2>/dev/null || true
+echo "dnsmasq: disabled (unused; it only failed at boot)"
+
 sudo install -D -m 644 "$HERE/system/journald-rosie.conf" /etc/systemd/journald.conf.d/zz-rosie.conf
 sudo systemctl restart systemd-journald
 echo "journal: up to 2000 files (was 100, and each boot's start was deleted to stay under it)"
