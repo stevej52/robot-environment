@@ -20,7 +20,10 @@ REL=https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models
 mkdir -p "$MODELS"
 cd "$MODELS"
 [ -f silero_vad.onnx ] || curl -sSLO "$REL/silero_vad.onnx"
-for m in sherpa-onnx-moonshine-tiny-en-int8 sherpa-onnx-whisper-tiny.en; do
+# moonshine-tiny is the default; moonshine-base and parakeet are the more accurate choices
+# (robot.launch.py asr:=..., listen.make_recognizer has the comparison).
+for m in sherpa-onnx-moonshine-tiny-en-int8 sherpa-onnx-whisper-tiny.en sherpa-onnx-moonshine-base-en-int8 \
+         sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8; do
     [ -d "$m" ] || curl -sSL "$REL/$m.tar.bz2" | tar xj
 done
 # Her English voice (Piper, via the same library) for "Rosie, speak English".
