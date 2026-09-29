@@ -1,0 +1,12 @@
+[Unit]
+Description=Rosie: the saved time again, after the RTC driver has set the clock to 1970 (started by udev for rtc0)
+# The restore used to run straight from the udev rule, and failed: udev runs rule programs in a
+# sandbox that may not set the clock ("rtc0: Process '/usr/local/sbin/rosie-clock restore' failed
+# with exit code 1", cold boot 2026-09-29 - 38 s at 1970 until NTP). As a service it runs with
+# the rights rosie-clock.service has, which set the clock fine at 10.8 s of the same boot.
+DefaultDependencies=no
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rosie-clock restore
