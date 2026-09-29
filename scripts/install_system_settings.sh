@@ -144,6 +144,10 @@ sudo install -D -m 644 "$HERE/system/systemd-watchdog-rosie.conf" /etc/systemd/s
 sudo systemctl daemon-reexec
 echo "hardware watchdog: 20 s (a hang that cannot panic resets her in 20 s, was 2 min)"
 
+sudo install -D -m 644 "$HERE/system/journald-rosie.conf" /etc/systemd/journald.conf.d/zz-rosie.conf
+sudo systemctl restart systemd-journald
+echo "journal: up to 2000 files (was 100, and each boot's start was deleted to stay under it)"
+
 sudo install -D -m 755 "$HERE/system/rosie-clock" /usr/local/sbin/rosie-clock
 for u in rosie-clock.service rosie-clock-save.service rosie-clock-save.timer; do
     sudo install -D -m 644 "$HERE/system/$u" "/etc/systemd/system/$u"
