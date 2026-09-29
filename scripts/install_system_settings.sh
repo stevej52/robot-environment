@@ -150,6 +150,9 @@ for u in rosie-clock.service rosie-clock-save.service rosie-clock-save.timer; do
 done
 sudo systemctl daemon-reload
 sudo systemctl enable --now rosie-clock.service rosie-clock-save.timer
+# ... and again when the PMIC RTC driver loads and resets the clock to 1970 (~11 s in)
+sudo install -D -m 644 "$HERE/system/udev-99-rosie-clock.rules" /etc/udev/rules.d/99-rosie-clock.rules
+sudo udevadm control --reload
 sudo /usr/local/sbin/rosie-clock save
 echo "clock: the last saved time at boot instead of 1970 (saved every 10 min and at shutdown; NTP corrects it)"
 
