@@ -152,6 +152,10 @@ echo "reSpeaker: its USB control interface open to plugdev (direction of arrival
 # boot ("port 53: Address already in use" - systemd-resolved has it). Off (2026-09-29).
 sudo systemctl disable --now dnsmasq.service 2>/dev/null || true
 echo "dnsmasq: disabled (unused; it only failed at boot)"
+# isc-dhcp-server: the same story; NVIDIA's USB-C networking (l4t-usb-device-mode) runs its own dhcpd
+# with its own config and pid file, so the system service only failed at boot.
+sudo systemctl disable --now isc-dhcp-server.service isc-dhcp-server6.service 2>/dev/null || true
+echo "isc-dhcp-server services: disabled (USB-C networking starts its own dhcpd)"
 
 sudo install -D -m 644 "$HERE/system/journald-rosie.conf" /etc/systemd/journald.conf.d/zz-rosie.conf
 sudo systemctl restart systemd-journald
