@@ -144,6 +144,10 @@ sudo install -D -m 644 "$HERE/system/systemd-watchdog-rosie.conf" /etc/systemd/s
 sudo systemctl daemon-reexec
 echo "hardware watchdog: 20 s (a hang that cannot panic resets her in 20 s, was 2 min)"
 
+sudo install -D -m 644 "$HERE/system/udev-99-rosie-respeaker.rules" /etc/udev/rules.d/99-rosie-respeaker.rules
+sudo udevadm control --reload && sudo udevadm trigger --attr-match=idVendor=2886
+echo "reSpeaker: its USB control interface open to plugdev (direction of arrival, speech detection)"
+
 sudo install -D -m 644 "$HERE/system/journald-rosie.conf" /etc/systemd/journald.conf.d/zz-rosie.conf
 sudo systemctl restart systemd-journald
 echo "journal: up to 2000 files (was 100, and each boot's start was deleted to stay under it)"

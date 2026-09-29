@@ -1,0 +1,5 @@
+# Rosie: the reSpeaker Flex XVF3800 (2886:0022) for the plugdev group, so her nodes (ears) can
+# read the chip's direction of arrival and speech detection over USB vendor control transfers
+# without root (jetnano_bringup/xvf.py). Audio itself goes through ALSA as before.
+# Installed as /etc/udev/rules.d/99-rosie-respeaker.rules by scripts/install_system_settings.sh.
+SUBSYSTEM=="usb", ATTR{idVendor}=="2886", ATTR{idProduct}=="0022", MODE="0664", GROUP="plugdev"
