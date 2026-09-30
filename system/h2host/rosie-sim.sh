@@ -6,8 +6,8 @@
 #   2. start the whole stack in Gazebo, headless, with Nav2 (jetnano_gazebo full_stack.launch.py,
 #      ROS domain 77 - the real robot is 7)
 #   3. drive the standard route with the same tools a floor drive uses: four legs with
-#      nav_goal --rescue round the east half of the 12 x 10 m testbed (the ramps are on the
-#      west), then nav_park back to the start
+#      nav_goal round the east half of the 12 x 10 m testbed (the ramps are on the west),
+#      then nav_park back to the start
 #   4. write sim/<date>/summary.md - every leg's result line, the park's result - and
 #      a one-line verdict in ~/rosie-backup/sim/latest.txt; the launch log stays beside it
 #
@@ -39,8 +39,13 @@ if ! nice -n 10 colcon build --packages-up-to jetnano_gazebo jetnano_navigation 
 fi
 source "$WS/install/setup.bash"
 
-# 2. the stack
-setsid ros2 launch jetnano_gazebo full_stack.launch.py headless:=true navigation:=true > "$OUT/launch.log" 2>&1 &
+# 2. the stack. lidar_odom: the simulated visual odometry (rgbd_odometry) loses its footing
+# on sim time and the EKF then runs away (first run, 2026-09-30: 19 m off after one leg);
+# MOLA on the lidar held to 5 cm in the same simulator on 2026-09-27. tilt_guard off: the
+# simulated robot does not answer the small commands of a final approach, and the motion
+# check then cancels every goal - the safety monitor is tested on the floor, not here.
+setsid ros2 launch jetnano_gazebo full_stack.launch.py headless:=true navigation:=true \
+    lidar_odom:=true vo_watchdog:=true tilt_guard:=false > "$OUT/launch.log" 2>&1 &
 LAUNCH=$!
 stop_stack() {
     kill -INT -- -"$LAUNCH" 2>/dev/null
@@ -70,7 +75,8 @@ sleep 20                                        # SLAM's first map, the costmaps
 ok=0; n=0
 while read -r name g; do
     n=$((n+1))
-    timeout 300 ros2 run jetnano_navigation nav_goal $g 120 --rescue > "$OUT/leg$n.log" 2>&1
+    # no --rescue here: its ask-Claude step waits minutes for a brain the simulator has none of
+    timeout 300 ros2 run jetnano_navigation nav_goal $g 120 > "$OUT/leg$n.log" 2>&1
     line=$(grep -m1 -E "^result" "$OUT/leg$n.log" || tail -n 1 "$OUT/leg$n.log")
     echo "- leg $n $name ($g): $line" >> "$OUT/summary.md"
     grep -q "^result SUCCEEDED" "$OUT/leg$n.log" && ok=$((ok+1))
