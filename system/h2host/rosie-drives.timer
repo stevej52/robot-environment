@@ -1,8 +1,10 @@
 [Unit]
-Description=Rosie: pull and analyse new drive recordings every 15 minutes (rosie-drives.service)
+Description=Rosie: pull and analyse new drive recordings every 5 minutes (rosie-drives.service)
+# 5 minutes since 2026-09-30: the robot no longer runs drive_report itself (it was
+# OOM-killed at 2.9 GB after drive 5), so this is where the report comes from.
 
 [Timer]
-OnCalendar=*:0/15
+OnCalendar=*:0/5
 Persistent=false
 
 [Install]

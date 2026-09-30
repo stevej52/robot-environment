@@ -21,12 +21,29 @@ LOG=$BASE/drives.log
 mkdir -p "$BASE/mirror/bags"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG"; }
 
-# 1. new recordings (and the watchdog's event log, small, so the health page is current)
+# 1. new recordings - finished ones only (metadata.yaml is the recorder's last write), and
+#    nothing at all while she is recording: the pull shares her Wi-Fi with the dashboard
+#    and the teleop, so it waits for the drive to end and then takes at most 3 MB/s
+#    (Steve, 2026-09-30: log to H2 and trade memory for bandwidth). The watchdog's event
+#    log and ~/audit come too (small), so the health page is current.
+#    Rosie's side lists what is finished: the drive, its -extra folder and its .log.
 if $SSH "$ROBOT" true 2>/dev/null; then
-    rsync -a -e "$SSH" "$ROBOT:bags/" "$BASE/mirror/bags/" 2>>"$LOG" || log "rsync bags FAILED"
-    rsync -a -e "$SSH" "$ROBOT:audit/" "$BASE/mirror/audit/" 2>>"$LOG" || true
-    rsync -a -e "$SSH" "$ROBOT:watchdog/" "$BASE/mirror/watchdog/" 2>>"$LOG" || true
-    echo "Rosie answered at $(date '+%Y-%m-%d %H:%M'), recordings pulled" > "$BASE/last-pull.txt"
+    listing=$($SSH "$ROBOT" 'cd bags 2>/dev/null || exit 0
+        for d in drive-*/; do d=${d%/}; case $d in *-extra) continue ;; esac
+            [ -f "$d/metadata.yaml" ] || { echo RECORDING; exit 0; }; done
+        for m in drive-*/metadata.yaml; do d=${m%/metadata.yaml}
+            echo "$d"; [ -d "$d-extra" ] && echo "$d-extra"; [ -f "$d.log" ] && echo "$d.log"; done' 2>/dev/null)
+    if [ "$listing" = RECORDING ]; then
+        echo "Rosie is recording a drive ($(date '+%H:%M')); the pull waits for it to end" > "$BASE/last-pull.txt"
+    else
+        if [ -n "$listing" ]; then
+            printf '%s\n' "$listing" | rsync -ar --bwlimit=3000 --files-from=- -e "$SSH" "$ROBOT:bags/" "$BASE/mirror/bags/" 2>>"$LOG" \
+                || log "rsync bags FAILED"
+        fi
+        rsync -a --bwlimit=3000 -e "$SSH" "$ROBOT:audit/" "$BASE/mirror/audit/" 2>>"$LOG" || true
+        rsync -a -e "$SSH" "$ROBOT:watchdog/" "$BASE/mirror/watchdog/" 2>>"$LOG" || true
+        echo "Rosie answered at $(date '+%Y-%m-%d %H:%M'), recordings pulled" > "$BASE/last-pull.txt"
+    fi
 else
     echo "Rosie did not answer at $(date '+%Y-%m-%d %H:%M') (off, or not on the Wi-Fi); showing what was pulled before" > "$BASE/last-pull.txt"
 fi

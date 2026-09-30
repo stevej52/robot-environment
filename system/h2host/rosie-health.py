@@ -246,7 +246,8 @@ def to_html(h, days):
         foot.append(f'watchdog events as of {h["events_at"]:%H:%M}')
     if h['journal_at']:
         foot.append(f'journal as of the nightly pull, {h["journal_at"]:%Y-%m-%d %H:%M}')
-    foot.append('drives are analysed here on H2-Host within 15 minutes of ending; the page refreshes itself every 5 minutes')
+    foot.append('drives are pulled and analysed here on H2-Host within minutes of ending (never while she is recording); '
+                'the page refreshes itself every 5 minutes')
     if days:
         foot.append('earlier days: ' + ', '.join(f'<a href="{d}.html">{d}</a>' for d in days))
     out.append('<div class="foot">' + '<br>'.join(foot) + '</div></body></html>')
