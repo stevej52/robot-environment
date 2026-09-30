@@ -39,14 +39,14 @@ if ! nice -n 10 colcon build --packages-up-to jetnano_gazebo jetnano_navigation 
 fi
 source "$WS/install/setup.bash"
 
-# 2. the stack: the simulated camera odometry (rgbd_odometry) AND the lidar's, motion check
-# off, VO hold on. Runs 1-3 on 2026-09-30: camera odometry alone ran 19 m away after one leg;
-# with the lidar's beside it the position held, but the safety monitor stopped every leg for
-# "the camera is blind"; without the camera odometry the EKF never published and Nav2 could
-# not even start (the simulated IMU feeds nothing). The safety monitor's camera checks are
-# tested on the floor, not here.
+# 2. the stack, on the simulator's exact odometry (ground_truth_vo on /vo) plus the lidar's,
+# motion check off. The simulated camera odometry (rgbd_odometry) was the weak link on
+# 2026-09-30: alone it ran the position 19 m off after one leg; beside the lidar's it had
+# the safety monitor stop every leg for "the camera is blind"; then it inverted her motion
+# on leg 3. This drive tests navigation, not RTAB-Map. The safety monitor's camera checks
+# are tested on the floor.
 setsid ros2 launch jetnano_gazebo full_stack.launch.py headless:=true navigation:=true \
-    lidar_odom:=true vo_watchdog:=true motion_check:=false > "$OUT/launch.log" 2>&1 &
+    lidar_odom:=true vo_watchdog:=true motion_check:=false ground_truth_odometry:=true > "$OUT/launch.log" 2>&1 &
 LAUNCH=$!
 stop_stack() {
     kill -INT -- -"$LAUNCH" 2>/dev/null
