@@ -15,6 +15,8 @@ case "$1" in
 esac
 WAV=/usr/local/share/rosie/shutdown.wav
 [ -f "$WAV" ] || exit 0
+# "Diane is sleeping" mode (ros2 run jetnano_bringup quiet on): not a peep
+[ -e /home/jeston/voice/quiet ] && exit 0
 # The reSpeaker's USB sound can get stuck in the kernel when a recording stops
 # (2026-09-29: an arecord asleep for good, state D, that no signal can end).
 # aplay would stick the same way and hold the power-off up: no sound then.

@@ -10,6 +10,8 @@
 # -20 dB: set them as sounds.py does (PCM 95 %, PCM,1 full) before playing.
 WAV=/usr/local/share/rosie/poweron.wav
 [ -f "$WAV" ] || exit 0
+# "Diane is sleeping" mode (ros2 run jetnano_bringup quiet on): not a peep
+[ -e /home/jeston/voice/quiet ] && exit 0
 i=0
 while [ $i -lt 60 ]; do
     cards=$(aplay -l 2>/dev/null)
