@@ -207,6 +207,9 @@ if [ "$DO_UNITS" -eq 1 ]; then
     [ -d "$UNITS" ] || { echo "$UNITS not found; clone jetnano_robot into ~/ros2_ws/src first" >&2; exit 1; }
     say "installing jetson-clocks, isaac-vo, jetnano-robot, jetnano-slam and wifi-watchdog services"
     run sudo cp "$UNITS"/jetson-clocks.service "$UNITS"/isaac-vo.service "$UNITS"/jetnano-robot.service "$UNITS"/jetnano-slam.service "$UNITS"/wifi-watchdog.service /etc/systemd/system/
+    # jetnano-robot's ExecStop: stops the launch, and powers off at once at a shutdown held up
+    # only by USB sound stuck in the kernel
+    run sudo install -D -m 755 "$UNITS"/jetnano-robot-stop /usr/local/sbin/jetnano-robot-stop
     run sudo systemctl daemon-reload
     # jetnano-slam is installed but not enabled: mapping starts on request
     # ("Rosie, start mapping"), with the robot at its parking spot.

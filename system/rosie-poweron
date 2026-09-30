@@ -1,17 +1,28 @@
 #!/bin/sh
-# Rosie's first sound: played as soon as her USB speaker exists at boot, well
+# Rosie's first sound: played as soon as her speaker exists at boot, well
 # before her software is up (Steve, 2026-09-26: a power-up sound, the mirror
 # of the shutdown hook). rosie-poweron.service runs this once per boot; it
-# waits up to 30 s for the speaker to appear, plays, and exits. The volume is
-# whatever ALSA restored from the last run (sounds.py sets 80 % every start).
+# waits up to 30 s for the speaker to appear, plays, and exits.
+#
+# The speaker is on the reSpeaker Flex (ALSA card L16K6Ch) since 2026-09-28;
+# until 2026-09-29 this still waited for the old USB speaker (UACDemoV10) and
+# so played nothing. The reSpeaker boots with both of its volume controls at
+# -20 dB: set them as sounds.py does (PCM 95 %, PCM,1 full) before playing.
 WAV=/usr/local/share/rosie/poweron.wav
 [ -f "$WAV" ] || exit 0
 i=0
 while [ $i -lt 60 ]; do
-    if aplay -l 2>/dev/null | grep -q UACDemoV10; then
-        sleep 0.5                              # let the device settle
-        exec timeout 6 aplay -q -D plughw:CARD=UACDemoV10 "$WAV"
-    fi
+    cards=$(aplay -l 2>/dev/null)
+    for card in L16K6Ch UACDemoV10; do
+        case "$cards" in
+            *"$card"*)
+                sleep 0.5                              # let the device settle
+                amixer -q -c "$card" sset PCM 95% 2>/dev/null
+                amixer -q -c "$card" sset PCM,1 100% 2>/dev/null
+                exec timeout 6 aplay -q -D "plughw:CARD=$card" "$WAV"
+                ;;
+        esac
+    done
     sleep 0.5
     i=$((i + 1))
 done

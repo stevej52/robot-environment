@@ -7,13 +7,24 @@
 # (systemd runs everything there with one argument: halt, poweroff, reboot or
 # kexec). Only a real shutdown gets the sound - a reboot comes back with her
 # hello. The wav is a copy under /usr, because /home may be gone by now, and
-# the speaker is addressed by its ALSA card name, the same as sounds.py uses.
+# the speaker is addressed by its ALSA card name, the same as sounds.py uses:
+# the reSpeaker Flex (L16K6Ch) since 2026-09-28, the old USB speaker after it.
 case "$1" in
     poweroff|halt) ;;
     *) exit 0 ;;
 esac
 WAV=/usr/local/share/rosie/shutdown.wav
 [ -f "$WAV" ] || exit 0
-timeout 6 /usr/bin/aplay -q -D plughw:CARD=UACDemoV10 "$WAV" 2>/dev/null \
-    || timeout 6 /usr/bin/aplay -q "$WAV" 2>/dev/null
+# The reSpeaker's USB sound can get stuck in the kernel when a recording stops
+# (2026-09-29: an arecord asleep for good, state D, that no signal can end).
+# aplay would stick the same way and hold the power-off up: no sound then.
+for s in /proc/[0-9]*/stat; do
+    read -r line < "$s" 2>/dev/null || continue
+    case "$line" in
+        *"(arecord) D "*|*"(aplay) D "*) exit 0 ;;
+    esac
+done
+for dev in plughw:CARD=L16K6Ch plughw:CARD=UACDemoV10 default; do
+    timeout 6 /usr/bin/aplay -q -D "$dev" "$WAV" 2>/dev/null && exit 0
+done
 exit 0
