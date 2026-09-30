@@ -1,5 +1,5 @@
 [Unit]
-Description=Rosie: the clock without an RTC battery - the last saved time at boot, saved at shutdown
+Description=Rosie: the clock fallback - the last saved time at boot if the RTC battery is dead, saved every 10 min and at shutdown (also into rtc0)
 DefaultDependencies=no
 After=local-fs.target
 Before=sysinit.target time-set.target systemd-timesyncd.service shutdown.target
