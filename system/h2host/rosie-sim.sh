@@ -39,13 +39,14 @@ if ! nice -n 10 colcon build --packages-up-to jetnano_gazebo jetnano_navigation 
 fi
 source "$WS/install/setup.bash"
 
-# 2. the stack. lidar_odom: the simulated visual odometry (rgbd_odometry) loses its footing
-# on sim time and the EKF then runs away (first run, 2026-09-30: 19 m off after one leg);
-# MOLA on the lidar held to 5 cm in the same simulator on 2026-09-27. tilt_guard off: the
-# simulated robot does not answer the small commands of a final approach, and the motion
-# check then cancels every goal - the safety monitor is tested on the floor, not here.
+# 2. the stack, on lidar odometry and the IMU only: the simulated camera odometry
+# (rgbd_odometry) loses its footing on sim time - the EKF ran 19 m away after one leg on
+# the first run (2026-09-30), and with lidar odometry beside it the safety monitor stopped
+# every leg for "the camera is blind" - while MOLA held to 5 cm here on 2026-09-27. So no
+# visual odometry, no motion check: the odometry is the lidar's, and the safety monitor's
+# camera checks are tested on the floor, not here.
 setsid ros2 launch jetnano_gazebo full_stack.launch.py headless:=true navigation:=true \
-    lidar_odom:=true vo_watchdog:=true tilt_guard:=false > "$OUT/launch.log" 2>&1 &
+    lidar_odom:=true visual_odometry:=false motion_check:=false > "$OUT/launch.log" 2>&1 &
 LAUNCH=$!
 stop_stack() {
     kill -INT -- -"$LAUNCH" 2>/dev/null
