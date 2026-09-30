@@ -1,0 +1,10 @@
+[Unit]
+Description=Rosie: nightly backup at 03:30 (rosie-backup.service)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

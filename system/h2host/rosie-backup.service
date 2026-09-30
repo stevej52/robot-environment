@@ -1,0 +1,7 @@
+[Unit]
+Description=Rosie: nightly backup pulled to H2-Host (mirror, repo mirrors, Sunday archive)
+
+[Service]
+Type=oneshot
+ExecStart=/home/steve/rosie-backup/rosie-backup.sh
+Nice=10
