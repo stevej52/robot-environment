@@ -21,10 +21,14 @@ LOG=$BASE/drives.log
 mkdir -p "$BASE/mirror/bags"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG"; }
 
-# 1. new recordings
+# 1. new recordings (and the watchdog's event log, small, so the health page is current)
 if $SSH "$ROBOT" true 2>/dev/null; then
     rsync -a -e "$SSH" "$ROBOT:bags/" "$BASE/mirror/bags/" 2>>"$LOG" || log "rsync bags FAILED"
     rsync -a -e "$SSH" "$ROBOT:audit/" "$BASE/mirror/audit/" 2>>"$LOG" || true
+    rsync -a -e "$SSH" "$ROBOT:watchdog/" "$BASE/mirror/watchdog/" 2>>"$LOG" || true
+    echo "Rosie answered at $(date '+%Y-%m-%d %H:%M'), recordings pulled" > "$BASE/last-pull.txt"
+else
+    echo "Rosie did not answer at $(date '+%Y-%m-%d %H:%M') (off, or not on the Wi-Fi); showing what was pulled before" > "$BASE/last-pull.txt"
 fi
 
 # 2. analysis
@@ -62,3 +66,7 @@ for bag in "$BASE"/mirror/bags/drive-*; do
     } > "$out/summary.md"
     log "$name: done - $(grep -m1 -oE '^guard: [^,]*' "$out/report.txt" 2>/dev/null)"
 done
+
+# 3. the health page, so it shows the drives and events just pulled (the nightly backup
+#    writes it too, with the fresh journal)
+python3 "$BASE/rosie-health.py" "$BASE" > /dev/null 2>>"$LOG" || log "health page FAILED"

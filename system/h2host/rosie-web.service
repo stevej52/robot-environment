@@ -1,0 +1,13 @@
+[Unit]
+Description=Rosie: the health page on http://192.168.1.238:8087/ (H2-Host)
+# Serves ~/rosie-backup/health only: the health pages, nothing of the mirror.
+# rosie-health.py writes index.html there after every drive pull and every nightly backup.
+
+[Service]
+ExecStart=/usr/bin/python3 -m http.server 8087 --bind 0.0.0.0 --directory /home/steve/rosie-backup/health
+Restart=always
+RestartSec=5
+Nice=10
+
+[Install]
+WantedBy=default.target
