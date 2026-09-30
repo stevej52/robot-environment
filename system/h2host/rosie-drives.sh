@@ -10,7 +10,7 @@
 #
 # Nothing runs on the robot except rsync. A recording still being written (no metadata.yaml
 # yet) is left for the next round. Log: ~/rosie-backup/drives.log.
-set -u
+set +u                                   # ROS's setup.bash reads unset variables
 ROBOT=${ROBOT:-jeston@192.168.1.7}
 KEY=${KEY:-$HOME/.ssh/id_ed25519_rosie}
 BASE=${BASE:-$HOME/rosie-backup}
