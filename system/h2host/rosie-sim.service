@@ -1,0 +1,8 @@
+[Unit]
+Description=Rosie: nightly test drive in the simulator (H2-Host)
+
+[Service]
+Type=oneshot
+ExecStart=/home/steve/rosie-backup/rosie-sim.sh
+Nice=5
+TimeoutStartSec=40min
