@@ -45,7 +45,10 @@ for d in maps bags audit watchdog sounds voice/voiceprints calibration nav_logs 
          workspaces/isaac_ros-dev/firmware .ros/where_am_i.env; do
     if $SSH "$ROBOT" "[ -e '$d' ]" 2>/dev/null; then
         mkdir -p "$BASE/mirror/$(dirname "$d")"
-        rsync -a --delete -e "$SSH" "$ROBOT:$d" "$BASE/mirror/$(dirname "$d")/" 2>>"$LOG" \
+        # --exclude=analysis: the drive analysis lives in the mirror (rosie-drives writes
+        # bags/<drive>/analysis/ here, the robot has no such folder), so --delete must not
+        # take it away again - which it did on the first real run, 2026-09-30
+        rsync -a --delete --exclude=analysis -e "$SSH" "$ROBOT:$d" "$BASE/mirror/$(dirname "$d")/" 2>>"$LOG" \
             && log "mirror $d: ok" || log "mirror $d: rsync FAILED"
     fi
 done
