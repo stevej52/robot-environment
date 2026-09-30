@@ -58,8 +58,8 @@ def count(lines, pattern):
 def drives_last_day(bags_dir, since):
     out = []
     for d in sorted(glob.glob(os.path.join(bags_dir, 'drive-*'))):
-        if d.endswith('-extra'):
-            continue
+        if d.endswith('-extra') or not os.path.isdir(d):
+            continue                                   # the -extra folders and the .log files beside the bags
         m = re.search(r'drive-(\d{8})-(\d{6})', d)
         if not m:
             continue
