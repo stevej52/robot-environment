@@ -52,6 +52,11 @@ done
 # the robot's launch settings (ROBOT_ARGS), without its secrets
 $SSH "$ROBOT" "sudo -n grep -vE 'KEY|TOKEN|SECRET|PASS' /etc/default/jetnano-robot" > "$BASE/mirror/jetnano-robot.default" 2>/dev/null \
     && log "mirror /etc/default/jetnano-robot (redacted): ok"
+# her log for the day, for the health check: warnings and the lines that tell the story
+mkdir -p "$BASE/mirror/journal"
+$SSH "$ROBOT" "journalctl --since -24h --no-hostname -o short -p warning 2>/dev/null; \
+    journalctl --since -24h --no-hostname -o short 2>/dev/null | grep -E 'battery level|powering off|CTRL-EVENT-DISCONNECTED|Started jetnano-robot|Starting jetnano-robot|active urbs|Check failed|process has died|running hot|jetnano-robot-stop:'" \
+    | sort -u > "$BASE/mirror/journal/$(date +%F).txt" 2>/dev/null && log "journal: $(wc -l < "$BASE/mirror/journal/$(date +%F).txt") lines"
 du -sh "$BASE/mirror" 2>/dev/null | awk '{print "mirror size", $1}' | tee -a "$LOG"
 
 # 3. Sundays: the full archive
@@ -66,4 +71,6 @@ if [ "$(date +%u)" = 7 ] || [ "${FULL:-}" = 1 ]; then
         log "archive: FAILED (see above)"
     fi
 fi
+# the daily health check, from the mirror (runs even when she was off: it says so)
+python3 "$BASE/rosie-health.py" "$BASE" > /dev/null 2>>"$LOG" && log "health: $BASE/health/latest.md" || log "health: FAILED"
 log "done"

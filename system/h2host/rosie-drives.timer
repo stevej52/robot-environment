@@ -1,0 +1,9 @@
+[Unit]
+Description=Rosie: pull and analyse new drive recordings every 15 minutes (rosie-drives.service)
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=false
+
+[Install]
+WantedBy=timers.target

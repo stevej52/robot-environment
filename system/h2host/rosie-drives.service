@@ -1,0 +1,7 @@
+[Unit]
+Description=Rosie: pull and analyse new drive recordings (H2-Host)
+
+[Service]
+Type=oneshot
+ExecStart=/home/steve/rosie-backup/rosie-drives.sh
+Nice=10
