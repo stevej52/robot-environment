@@ -1,0 +1,24 @@
+[Unit]
+Description=jetnano robot: voice and hearing (ros2 launch jetnano_bringup voice.launch.py) - off unless asked for
+Documentation=https://github.com/stevej52/jetnano_robot
+# Lives and dies with the robot stack, but never starts on its own: `ros2 run jetnano_bringup voice on`
+# (or the driving page's VOICE button) starts it; drive.sh stops it before a lap. Steve, 2026-10-01:
+# the reSpeaker's USB audio stream panicked the kernel mid-lap - the whole stack is unloaded for tests.
+BindsTo=jetnano-robot.service
+After=jetnano-robot.service
+
+[Service]
+Type=simple
+User=jeston
+Group=jeston
+SupplementaryGroups=audio i2c
+WorkingDirectory=/home/jeston
+Environment=ROS_DOMAIN_ID=7
+Environment=HOME=/home/jeston
+Environment=VOICE_ARGS=
+EnvironmentFile=-/etc/default/jetnano-robot
+ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/jeston/ros2_ws/install/setup.bash && exec ros2 launch jetnano_bringup voice.launch.py $VOICE_ARGS'
+KillSignal=SIGINT
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=10
