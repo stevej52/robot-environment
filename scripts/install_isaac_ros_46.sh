@@ -139,7 +139,7 @@ if [ "$DO_CONTAINER" -eq 1 ]; then
         docker image inspect "$BUILT_IMAGE" >/dev/null 2>&1 || { echo "no image; run with --build first" >&2; exit 1; }
         say "creating $CONTAINER from $BUILT_IMAGE and installing cuVSLAM into it"
         run docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-        run docker run -d --restart no --privileged --network host --ipc host --runtime nvidia \
+        run docker run -d --restart no --privileged --network host --ipc host --runtime nvidia --cpuset-cpus 0-4 \
             -e ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-7}" -e ISAAC_ROS_WS=/workspaces/isaac_ros-dev \
             -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all \
             -e HOST_USER_UID="$(id -u)" -e HOST_USER_GID="$(id -g)" -e USER="$USER" -e TERM=xterm \
@@ -178,7 +178,7 @@ if [ "$DO_CONTAINER" -eq 1 ]; then
         :
     else
         say "creating $CONTAINER from $IMAGE (systemd's isaac-vo.service starts it; --restart no on purpose)"
-        run docker run -d --restart no --privileged --network host --ipc host --runtime nvidia \
+        run docker run -d --restart no --privileged --network host --ipc host --runtime nvidia --cpuset-cpus 0-4 \
             -e ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-7}" -e ISAAC_ROS_WS=/workspaces/isaac_ros-dev \
             -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all \
             -e HOST_USER_UID="$(id -u)" -e HOST_USER_GID="$(id -g)" -e USER="$USER" -e TERM=xterm \

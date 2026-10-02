@@ -270,3 +270,12 @@ new ones), and the 24 GB Isaac ROS container image (rebuild it with step 3;
   what it is working on, and `~/watchdog/events.jsonl` keeps the history.
 - **Nothing on the network sees the robot's topics.** docs/environment.md
   section 7.
+
+## 2026-10-01: the Isaac container keeps off CPU 5
+
+MOLA (lidar odometry) is pinned to CPU 5 at nice -5; the container's nvblox threads landed
+there too and MOLA dropped 14-18 % of scans ("worker busy"). The container runs with
+`--cpuset-cpus 0-4` (install_isaac_ros_46.sh); on a live robot: `docker update --cpuset-cpus 0-4 isaac_vo`.
+Also two service drop-ins in system/jetnano-robot.service.d/: shm-clean.conf (stale Fast-DDS
+/dev/shm files after a hard reset) and lidar-reenumerate.conf (the CP2102 comes up wedged
+after a hard reset; re-enumerate it before the stack starts).

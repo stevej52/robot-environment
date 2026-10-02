@@ -19,6 +19,7 @@ Environment=VOICE_ARGS=
 EnvironmentFile=-/etc/default/jetnano-robot
 ExecStart=/bin/bash -lc 'source /opt/ros/jazzy/setup.bash && source /home/jeston/ros2_ws/install/setup.bash && exec ros2 launch jetnano_bringup voice.launch.py $VOICE_ARGS'
 KillSignal=SIGINT
+KillMode=mixed
 TimeoutStopSec=30
 Restart=on-failure
 RestartSec=10
