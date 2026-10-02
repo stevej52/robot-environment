@@ -6,7 +6,8 @@
 #   2. for every recording in the mirror without analysis/summary.md: drive_report (the
 #      robot's own reporter, run here with the current code), the heading-drift check
 #      (extract_heading + heading_drift) and the lidar-odometry gap check, into
-#      mirror/bags/<drive>/analysis/, and a summary.md that puts the headlines first
+#      mirror/bags/<drive>/analysis/, and a summary.md that puts the headlines first;
+#      then scorecard.py for every bag without analysis/scorecard.json (2026-10-01)
 #
 # Nothing runs on the robot except rsync. A recording still being written (no metadata.yaml
 # yet) is left for the next round. Log: ~/rosie-backup/drives.log.
@@ -30,7 +31,12 @@ log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG"; }
 if $SSH "$ROBOT" true 2>/dev/null; then
     listing=$($SSH "$ROBOT" 'cd bags 2>/dev/null || exit 0
         for d in drive-*/; do d=${d%/}; case $d in *-extra) continue ;; esac
-            [ -f "$d/metadata.yaml" ] || { echo RECORDING; exit 0; }; done
+            [ -f "$d/metadata.yaml" ] && continue
+            # a bag without metadata is a recording in progress - unless it is a corpse: a
+            # kernel panic left drive-20261001-205742 as a 0-byte mcap, and it blocked every
+            # pull for three hours ("Rosie is recording")
+            if [ -z "$(find "$d" -name "*.mcap" -size +0 -mmin -10 2>/dev/null)" ] && [ -z "$(find "$d" -mmin -10 2>/dev/null)" ]; then continue; fi
+            echo RECORDING; exit 0; done
         for m in drive-*/metadata.yaml; do d=${m%/metadata.yaml}
             echo "$d"; [ -d "$d-extra" ] && echo "$d-extra"; [ -f "$d.log" ] && echo "$d.log"; done' 2>/dev/null)
     if [ "$listing" = RECORDING ]; then
@@ -82,6 +88,19 @@ for bag in "$BASE"/mirror/bags/drive-*; do
         head -n 30 "$out/lidar_gaps.txt" 2>/dev/null
     } > "$out/summary.md"
     log "$name: done - $(grep -m1 -oE '^guard: [^,]*' "$out/report.txt" 2>/dev/null)"
+done
+
+# 2b. the scorecard (tools/drive_analysis/scorecard.py): the numbers that say whether a change
+#     made her smoother, one json per drive, tabled on the health page. Cheap (seconds), so
+#     every analysed bag without one gets it - the old drives too.
+for bag in "$BASE"/mirror/bags/drive-*; do
+    [ -d "$bag" ] || continue
+    case "$bag" in *-extra) continue ;; esac
+    [ -f "$bag/metadata.yaml" ] || continue
+    [ -f "$bag/analysis/scorecard.json" ] && continue
+    ls "$bag"/*.mcap > /dev/null 2>&1 || continue
+    line=$(timeout 300 nice -n 10 "$PY" "$TOOLS/scorecard.py" "$bag" --audit "$BASE/mirror/audit" 2>&1 | tail -1)
+    log "$(basename "$bag"): scorecard - $line"
 done
 
 # 3. the health page, so it shows the drives and events just pulled (the nightly backup

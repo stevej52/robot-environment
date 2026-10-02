@@ -206,6 +206,12 @@ if [ "$DO_UNITS" -eq 1 ]; then
     UNITS="$JETNANO_ROBOT_DIR/jetnano_bringup/systemd"
     [ -d "$UNITS" ] || { echo "$UNITS not found; clone jetnano_robot into ~/ros2_ws/src first" >&2; exit 1; }
     say "installing jetson-clocks, isaac-vo, jetnano-robot, jetnano-slam and wifi-watchdog services"
+    # the robot service's drop-ins (DDS shm cleanup, lidar re-enumeration, KillMode, the INA219's
+    # kernel driver) and the voice service, from robot-environment/system (2026-10-02)
+    ENV_SYS="$(cd "$(dirname "$0")/.." && pwd)/system"
+    run sudo mkdir -p /etc/systemd/system/jetnano-robot.service.d
+    run sudo cp "$ENV_SYS"/jetnano-robot.service.d/*.conf /etc/systemd/system/jetnano-robot.service.d/
+    run sudo cp "$ENV_SYS"/jetnano-voice.service /etc/systemd/system/jetnano-voice.service
     run sudo cp "$UNITS"/jetson-clocks.service "$UNITS"/isaac-vo.service "$UNITS"/jetnano-robot.service "$UNITS"/jetnano-slam.service "$UNITS"/wifi-watchdog.service /etc/systemd/system/
     # jetnano-robot's ExecStop: stops the launch, and powers off at once at a shutdown held up
     # only by USB sound stuck in the kernel

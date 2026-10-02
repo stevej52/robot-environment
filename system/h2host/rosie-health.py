@@ -15,7 +15,7 @@ nightly pull's. Reads the last 24 hours of:
                                     the system lines (memory low, running hot)
   mirror/journal/<date>.txt         the robot's own log: battery level, Wi-Fi drops, restarts,
                                     stuck sound, crashes
-  mirror/bags/drive-*/analysis/     the drives analysed since (report.txt and summary.md)
+  mirror/bags/drive-*/analysis/     the drives analysed since (report.txt, summary.md, scorecard.json)
 No robot needed: it runs on the mirror, so it can be re-run any time.
 """
 import glob
@@ -88,6 +88,77 @@ def drives_last_day(bags_dir, since):
         summary = read(os.path.join(d, 'analysis', 'summary.md'))
         out.append((t, os.path.basename(d), report, summary))
     return out
+
+
+def scorecards(bags_dir):
+    """Every drive's analysis/scorecard.json (tools/drive_analysis/scorecard.py), oldest first."""
+    out = []
+    for path in sorted(glob.glob(os.path.join(bags_dir, 'drive-*', 'analysis', 'scorecard.json'))):
+        try:
+            with open(path) as f:
+                c = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if c.get('lap_s') is None or (c.get('dist_m') or 0) < 3:
+            continue                                   # a bench test or an aborted start: nothing to compare
+        out.append(c)
+    return out
+
+
+def hotspots(cards, radius=0.6):
+    """Where she stops, across drives: stops within `radius` m of each other, counted, most first."""
+    # the numbered, scripted drives only: the debugging sessions before them stood for minutes
+    pts = [(s['map'][0], s['map'][1], c.get('drive'), s['s'], s['guard'])
+           for c in cards if c.get('mode') != 'hand' and c.get('drive') is not None
+           for s in c.get('stops', []) if s.get('map')]
+    clusters = []
+    for x, y, d, dur, g in pts:
+        for cl in clusters:
+            if (cl['x'] - x) ** 2 + (cl['y'] - y) ** 2 <= radius ** 2:
+                n = cl['n']
+                cl['x'], cl['y'] = (cl['x'] * n + x) / (n + 1), (cl['y'] * n + y) / (n + 1)
+                cl['n'] += 1
+                cl['s'] += dur
+                cl['drives'].add(d)
+                cl['guard'] += int(bool(g))
+                break
+        else:
+            clusters.append({'x': x, 'y': y, 'n': 1, 's': dur, 'drives': {d}, 'guard': int(bool(g))})
+    return sorted((c for c in clusters if len(c['drives']) >= 2 or c['n'] >= 3), key=lambda c: -c['n'])
+
+
+SCORE_COLS = [('drive', 'drive', lambda v: f'{v}' if v is not None else '?'),
+              ('when', 'when', lambda v: (v or '')[5:16].replace('T', ' ')),
+              ('mode', 'mode', lambda v: v or ''),
+              ('route', 'route', lambda v: v or ''),
+              ('waypoints', 'wpts', lambda v: v or ''),
+              ('lap_s', 'lap s', lambda v: f'{v:.0f}'),
+              ('dist_m', 'm', lambda v: f'{v:.1f}'),
+              ('v_mean', 'm/s', lambda v: f'{v:.2f}'),
+              ('v_p95', 'p95', lambda v: f'{v:.2f}'),
+              ('stops_n', 'stops', lambda v: f'{v}'),
+              ('stopped_s', 'stood s', lambda v: f'{v:.0f}'),
+              ('guard_stops', 'guard', lambda v: '' if v is None else f'{v}'),
+              ('reversals_per_m', 'rev/m', lambda v: '' if v is None else f'{v:.2f}'),
+              ('fr_switches', 'f/r', lambda v: '' if v is None else f'{v}'),
+              ('lat_acc_p95', 'lat m/s2', lambda v: '' if v is None else f'{v:.2f}'),
+              ('clear_p1_m', 'clear m', lambda v: '' if v is None else f'{v:.2f}'),
+              ('park_cm', 'park cm', lambda v: '' if v is None else f'{v}'),
+              ('park_deg', 'deg', lambda v: '' if v is None else f'{v:+d}'),
+              ('park_s', 'park s', lambda v: '' if v is None else f'{v}')]
+
+
+def score_rows(cards):
+    rows = []
+    for c in cards:
+        rows.append([fmt(c.get(key)) if c.get(key) is not None or key in ('route', 'waypoints', 'when', 'mode') else ''
+                     for key, _, fmt in SCORE_COLS])
+    return rows
+
+
+def hotspot_lines(spots):
+    return [f'({h["x"]:+.1f}, {h["y"]:+.1f}): {h["n"]} stops on {len(h["drives"])} drive(s), {h["s"]:.0f} s in all'
+            + (f', guard {h["guard"]}' if h['guard'] else '') for h in spots[:8]]
 
 
 def pick(report, key):
@@ -167,9 +238,11 @@ def collect(base, now):
         if bat_lines:
             system_lines.append(f'last battery line: {bat_lines[-1].split("]: ")[-1][:120]}')
 
+    cards = scorecards(os.path.join(base, 'mirror', 'bags'))
     last_pull = read(os.path.join(base, 'last-pull.txt')).strip()
     return {
         'now': now, 'worry': worry, 'drives': drives, 'n_events': len(ev), 'watchdog': watchdog,
+        'cards': cards, 'hotspots': hotspots(cards),
         'system': system_lines, 'have_journal': bool(jl),
         'events_at': mtime(ev_path),
         'journal_at': max((mtime(p) for p in journal_files), default=None) if journal_files else None,
@@ -185,6 +258,16 @@ def to_markdown(h):
     lines.append('## Drives' + (f' ({len(h["drives"])})' if h['drives'] else ': none'))
     lines += [f'- {drive_line(t, name, report)}' for t, name, report, _ in h['drives']]
     lines.append('')
+    if h['cards']:
+        lines.append(f'## Scorecard ({len(h["cards"])} drives, every drive scored)')
+        lines.append('| ' + ' | '.join(c[1] for c in SCORE_COLS) + ' |')
+        lines.append('|' + '---|' * len(SCORE_COLS))
+        lines += ['| ' + ' | '.join(r) + ' |' for r in score_rows(h['cards'])]
+        lines.append('')
+        if h['hotspots']:
+            lines.append('### Where she stops (across the numbered drives)')
+            lines += [f'- {ln}' for ln in hotspot_lines(h['hotspots'])]
+            lines.append('')
     lines.append('## Watchdog' + (f' ({h["n_events"]} events)' if h['n_events'] else ': quiet'))
     lines += [f'- {w}' for w in h['watchdog']]
     lines.append('')
@@ -207,6 +290,9 @@ ul { padding-left: 1.3em; } li { margin: 0.25em 0; }
 details { margin: 0.35em 0; } summary { cursor: pointer; }
 pre { background: #f5f5f5; padding: 0.8em; overflow-x: auto; font-size: 0.85em; white-space: pre-wrap; }
 .foot { color: #666; font-size: 0.85em; margin-top: 2em; border-top: 1px solid #ddd; padding-top: 0.6em; }
+.wide { overflow-x: auto; } table { border-collapse: collapse; font-size: 0.85em; font-variant-numeric: tabular-nums; }
+th, td { border: 1px solid #ddd; padding: 0.25em 0.5em; text-align: right; white-space: nowrap; } th { background: #f5f5f5; }
+h3 { font-size: 1em; margin-top: 1em; }
 """
 
 
@@ -232,6 +318,16 @@ def to_html(h, days):
         else:
             out.append(f'<div>{line}</div>')
 
+    if h['cards']:
+        out.append(f'<h2>Scorecard ({len(h["cards"])} drives)</h2>'
+                   '<div class="stamp">one row per drive, oldest first: lap time and distance, speed (mean, 95th pct), '
+                   'stops of 1 s or more and the time stood, collision-guard holds, steering reversals per metre, '
+                   'forward/reverse switches, lateral acceleration (95th pct), 1st-percentile lidar clearance, parking error and time</div>')
+        out.append('<div class="wide"><table><tr>' + ''.join(f'<th>{e(c[1])}</th>' for c in SCORE_COLS) + '</tr>'
+                   + ''.join('<tr>' + ''.join(f'<td>{e(v)}</td>' for v in r) + '</tr>' for r in score_rows(h['cards']))
+                   + '</table></div>')
+        if h['hotspots']:
+            out.append('<h3>Where she stops, across the numbered drives</h3><ul>' + ''.join(f'<li>{e(ln)}</li>' for ln in hotspot_lines(h['hotspots'])) + '</ul>')
     out.append('<h2>Watchdog' + (f' ({h["n_events"]} events)' if h['n_events'] else ': quiet') + '</h2>')
     if h['watchdog']:
         out.append('<ul>' + ''.join(f'<li>{e(w)}</li>' for w in h['watchdog']) + '</ul>')
