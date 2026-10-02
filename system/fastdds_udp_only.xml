@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Fast DDS profile for every ROS process on Rosie (host side). Installed as
+  /etc/jetnano/fastdds_udp_only.xml and named by FASTRTPS_DEFAULT_PROFILES_FILE in the
+  service drop-ins (jetnano-*.service.d/udp-only.conf), ~/.bashrc and the drive scripts.
+
+  UDP only, no shared memory (2026-10-02). Fast DDS's shared-memory transport blocks a
+  writer on a reader that died without unlocking its port: the EKF's /odometry/filtered
+  stopped for five minutes behind a probe killed by `timeout` (13:55), slam_toolbox's
+  map->odom stopped behind a dead Nav2 reader (10-01), and every hard reset left port
+  files that made each new process print "open_and_lock_file failed". The Isaac
+  container has run UDP-only since 09-27 (its copy of this file lives in the container,
+  jetnano_bringup/scripts/cuvslam_vo.sh), so the camera's images and the 3D map already
+  cross UDP on loopback; this makes the host the same.
+
+  non_blocking_send: a send that would block on a full socket buffer is dropped instead
+  of stalling the publisher (the RealSense driver stalled behind a slow Wi-Fi viewer,
+  09-27). Reliable subscribers still get their data by retransmission.
+-->
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <profiles>
+    <transport_descriptors>
+      <transport_descriptor>
+        <transport_id>udp_only</transport_id>
+        <type>UDPv4</type>
+        <non_blocking_send>true</non_blocking_send>
+      </transport_descriptor>
+    </transport_descriptors>
+    <participant profile_name="udp_only_participant" is_default_profile="true">
+      <rtps>
+        <userTransports><transport_id>udp_only</transport_id></userTransports>
+        <useBuiltinTransports>false</useBuiltinTransports>
+      </rtps>
+    </participant>
+  </profiles>
+</dds>

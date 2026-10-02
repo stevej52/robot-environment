@@ -212,6 +212,12 @@ if [ "$DO_UNITS" -eq 1 ]; then
     run sudo mkdir -p /etc/systemd/system/jetnano-robot.service.d
     run sudo cp "$ENV_SYS"/jetnano-robot.service.d/*.conf /etc/systemd/system/jetnano-robot.service.d/
     run sudo cp "$ENV_SYS"/jetnano-voice.service /etc/systemd/system/jetnano-voice.service
+    # Fast DDS without shared memory for every unit (system/fastdds_udp_only.xml, 2026-10-02)
+    run sudo install -D -m 644 "$ENV_SYS"/fastdds_udp_only.xml /etc/jetnano/fastdds_udp_only.xml
+    for u in jetnano-voice jetnano-localize jetnano-slam; do
+        run sudo mkdir -p /etc/systemd/system/$u.service.d
+        run sudo cp "$ENV_SYS"/$u.service.d/udp-only.conf /etc/systemd/system/$u.service.d/
+    done
     run sudo cp "$UNITS"/jetson-clocks.service "$UNITS"/isaac-vo.service "$UNITS"/jetnano-robot.service "$UNITS"/jetnano-slam.service "$UNITS"/wifi-watchdog.service /etc/systemd/system/
     # jetnano-robot's ExecStop: stops the launch, and powers off at once at a shutdown held up
     # only by USB sound stuck in the kernel
