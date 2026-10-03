@@ -279,3 +279,21 @@ there too and MOLA dropped 14-18 % of scans ("worker busy"). The container runs 
 Also two service drop-ins in system/jetnano-robot.service.d/: shm-clean.conf (stale Fast-DDS
 /dev/shm files after a hard reset) and lidar-reenumerate.conf (the CP2102 comes up wedged
 after a hard reset; re-enumerate it before the stack starts).
+
+## 2026-10-02: no Fast-DDS shared memory anywhere on the host
+
+Fast-DDS's shared-memory transport blocks a writer on a reader that died without unlocking
+its port: the EKF's odometry stopped for five minutes behind a probe killed by `timeout`,
+slam_toolbox's map->odom stopped behind a dead Nav2 reader the day before, and every hard
+reset left locked port files. The whole host now runs UDP-only, like the Isaac container has
+since 09-27: `system/fastdds_udp_only.xml` installed as `/etc/jetnano/fastdds_udp_only.xml`,
+named by `udp-only.conf` under `jetnano-robot`, `-voice`, `-localize` and `-slam`
+`.service.d/` (`Environment=FASTRTPS_DEFAULT_PROFILES_FILE=...`), exported in `~/.bashrc`
+and by `drive.sh`, `nav2_ctl.sh`, `predrive.sh` and `soak.sh`. `install_isaac_ros_46.sh`
+installs all of it. Check: `ls /dev/shm | grep -c fastrtps` is 0 with the stack up.
+
+Rules that came with it: no rebuilds, restarts or probes while she is on the floor; look at
+her with `ros2 run jetnano_bringup probe ...` (a node under the same profile that finishes
+on its own), never with a CLI tool under `timeout`. The bench soak is
+`jetnano_bringup/scripts/soak.sh` (one line every 5 min to `~/audit/soak-*.log`; pass =
+zero respawns, zero watchdog downs).

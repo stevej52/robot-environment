@@ -58,7 +58,7 @@ $SSH "$ROBOT" "sudo -n grep -vE 'KEY|TOKEN|SECRET|PASS' /etc/default/jetnano-rob
 # her log for the day, for the health check: warnings and the lines that tell the story
 mkdir -p "$BASE/mirror/journal"
 $SSH "$ROBOT" "journalctl --since -24h --no-hostname -o short -p warning 2>/dev/null; \
-    journalctl --since -24h --no-hostname -o short 2>/dev/null | grep -E 'battery level|powering off|CTRL-EVENT-DISCONNECTED|Started jetnano-robot|Starting jetnano-robot|active urbs|Check failed|process has died|running hot|jetnano-robot-stop:'" \
+    journalctl --since -24h --no-hostname -o short 2>/dev/null | grep -E 'battery level|powering off|CTRL-EVENT-DISCONNECTED|Started jetnano-robot|Starting jetnano-robot|active urbs|Check failed|process has died|process started with pid|Starting jetnano-voice|Starting jetnano-localize|running hot|jetnano-robot-stop:'" \
     | sort -u > "$BASE/mirror/journal/$(date +%F).txt" 2>/dev/null && log "journal: $(wc -l < "$BASE/mirror/journal/$(date +%F).txt") lines"
 du -sh "$BASE/mirror" 2>/dev/null | awk '{print "mirror size", $1}' | tee -a "$LOG"
 
