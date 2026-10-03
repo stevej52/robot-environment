@@ -297,3 +297,13 @@ her with `ros2 run jetnano_bringup probe ...` (a node under the same profile tha
 on its own), never with a CLI tool under `timeout`. The bench soak is
 `jetnano_bringup/scripts/soak.sh` (one line every 5 min to `~/audit/soak-*.log`; pass =
 zero respawns, zero watchdog downs).
+
+## 2026-10-03: Nav2 as a unit, and verifying an install
+
+`jetnano-nav2.service` (jetnano_robot/jetnano_bringup/systemd) runs navigation.launch.py as one
+supervised unit, started with jetnano-robot (WantedBy) and stopped with it (BindsTo/PartOf);
+`Restart=always` because a dead container ends the launch cleanly (navigation.launch.py's
+on_exit Shutdown) and must come back with its components. `nav2_ctl.sh start|stop|status` wraps
+it. `scripts/verify_install.sh` checks units, drop-ins, the UDP-only environment, installed
+binaries against their sources, and that every checkout is at its origin head: run it after
+any rebuild or install, and when something seems to run old code.

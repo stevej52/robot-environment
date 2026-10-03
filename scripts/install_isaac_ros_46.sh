@@ -219,13 +219,15 @@ if [ "$DO_UNITS" -eq 1 ]; then
         run sudo cp "$ENV_SYS"/$u.service.d/udp-only.conf /etc/systemd/system/$u.service.d/
     done
     run sudo cp "$UNITS"/jetson-clocks.service "$UNITS"/isaac-vo.service "$UNITS"/jetnano-robot.service "$UNITS"/jetnano-slam.service "$UNITS"/wifi-watchdog.service /etc/systemd/system/
+    # Nav2 as one supervised unit (2026-10-03): the launch owns container, components, lifecycle, helpers
+    run sudo cp "$UNITS"/jetnano-nav2.service /etc/systemd/system/
     # jetnano-robot's ExecStop: stops the launch, and powers off at once at a shutdown held up
     # only by USB sound stuck in the kernel
     run sudo install -D -m 755 "$UNITS"/jetnano-robot-stop /usr/local/sbin/jetnano-robot-stop
     run sudo systemctl daemon-reload
     # jetnano-slam is installed but not enabled: mapping starts on request
     # ("Rosie, start mapping"), with the robot at its parking spot.
-    run sudo systemctl enable jetson-clocks.service isaac-vo.service jetnano-robot.service wifi-watchdog.service
+    run sudo systemctl enable jetson-clocks.service isaac-vo.service jetnano-robot.service wifi-watchdog.service jetnano-nav2.service
     run sudo systemctl disable jetnano-slam.service 2>/dev/null || true
 fi
 
