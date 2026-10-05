@@ -1,0 +1,53 @@
+#!/bin/sh
+# rosie-blackbox: what a sudden death leaves behind (2026-10-04).
+#
+# Drive 29 died mid-lap at 18:15:30 with nothing in the journal and no panic record, then
+# two more silent deaths and a GPU-driver panic in six minutes. Nothing showed whether it
+# was power or a hang. Two things from now on:
+#
+#   at every boot   the chip's own reset reason (POR = the power went, WDT = a hang the
+#                   hardware watchdog caught, SW = a reboot or a panic's reboot) into the
+#                   journal and /var/log/rosie-blackbox/resets.log
+#   always          ten times a second: module input voltage and current (VDD_IN), the
+#                   CPU/GPU rail current, the battery pack volts (INA219), GPU load and CPU
+#                   temperature, one line per sample into /var/log/rosie-blackbox/power-<boot>.log,
+#                   flushed to disk every second. The last seconds before a death survive it.
+#
+# Installed as /usr/local/sbin/rosie-blackbox, run by rosie-blackbox.service.
+set -u
+D=/var/log/rosie-blackbox
+mkdir -p "$D"
+PMC=/sys/devices/platform/bus@0/c360000.pmc
+BOOT=$(cat /proc/sys/kernel/random/boot_id | cut -c1-8)
+REASON="$(cat $PMC/reset_reason 2>/dev/null) $(cat $PMC/reset_level 2>/dev/null)"
+echo "$(date '+%F %T') boot $BOOT reset reason: $REASON" | tee -a "$D/resets.log"
+logger -t rosie-blackbox "boot $BOOT: last reset reason $REASON"
+# keep the last 20 power logs
+ls -1t "$D"/power-*.log 2>/dev/null | tail -n +21 | xargs -r rm -f
+
+INA=""; BAT=""
+for h in /sys/class/hwmon/hwmon*; do
+    case "$(cat $h/name 2>/dev/null)" in
+        ina3221) INA=$h ;;
+        ina219) BAT=$h ;;
+    esac
+done
+GPU=/sys/devices/platform/gpu.0/load
+TEMP=$(grep -l "^cpu" /sys/class/thermal/thermal_zone*/type 2>/dev/null | head -1 | xargs -r dirname)/temp
+LOG="$D/power-$(date +%m%d-%H%M)-$BOOT.log"
+echo "# time  vin_mV iin_mA cpugpu_mA soc_mA  bat_mV  gpu_pct  cpu_C" > "$LOG"
+exec 3>>"$LOG"
+n=0
+while :; do
+    t=$(date +%T.%2N)
+    vin=$(cat $INA/in1_input 2>/dev/null); iin=$(cat $INA/curr1_input 2>/dev/null)
+    icg=$(cat $INA/curr2_input 2>/dev/null); isoc=$(cat $INA/curr3_input 2>/dev/null)
+    bat=$( [ -n "$BAT" ] && cat $BAT/in1_input 2>/dev/null)
+    gpu=$(cat $GPU 2>/dev/null); tc=$(cat $TEMP 2>/dev/null)
+    echo "$t $vin $iin $icg $isoc ${bat:--} $(( ${gpu:-0} / 10 )) $(( ${tc:-0} / 1000 ))" >&3
+    n=$((n + 1))
+    [ $((n % 10)) = 0 ] && sync "$LOG"
+    # keep a running log from growing without bound: about 3.5 MB an hour, roll at 6 h
+    [ $n -ge 216000 ] && exec "$0"
+    sleep 0.1
+done

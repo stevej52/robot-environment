@@ -1,0 +1,16 @@
+[Unit]
+Description=Rosie black box: the reset reason at boot, and the power rails ten times a second
+# early, so a death soon after boot (the GPU panic at 99 s, 2026-10-04) is covered too
+DefaultDependencies=no
+After=local-fs.target
+Before=jetnano-robot.service isaac-vo.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/rosie-blackbox
+Restart=always
+RestartSec=2
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
