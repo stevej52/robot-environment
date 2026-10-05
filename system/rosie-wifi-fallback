@@ -1,0 +1,37 @@
+#!/bin/sh
+# rosie-wifi-fallback: boot on the in-kernel rtw88 Wi-Fi driver, fall back to Realtek's if it
+# does not get her on the network (2026-10-04).
+#
+# Why rtw88: all four kernel deaths of 2026-10-04 came within 0-6 s of Realtek's out-of-tree
+# rtl88x2ce driver hopping channels or reconnecting. rtw88 is the driver for the same chip that
+# lives in the Linux tree itself (built for her kernel from the 6.8.12 sources and installed
+# under /lib/modules/<kernel>/updates/rtw88); /etc/modprobe.d/rosie-wifi-driver.conf blacklists
+# the vendor one so udev loads rtw88.
+#
+# The fallback: if wlP1p1s0 has no IPv4 address and the gateway does not answer within 90 s of
+# this unit starting, rtw88 is unloaded and the vendor driver loaded, and the blacklist removed
+# so the next boot uses it too. She cannot be stranded off the network by this change.
+IF=wlP1p1s0
+GW=192.168.1.1
+D=/var/log/rosie-blackbox
+mkdir -p "$D"
+say() { echo "$(date '+%F %T') wifi: $*" | tee -a "$D/resets.log"; logger -t rosie-wifi "$*"; }
+
+drv=$(basename "$(readlink -f /sys/class/net/$IF/device/driver 2>/dev/null)" 2>/dev/null)
+say "driver at boot: ${drv:-none}"
+[ -f /etc/modprobe.d/rosie-wifi-driver.conf ] || { say "vendor driver chosen (no blacklist): nothing to check"; exit 0; }
+
+for i in $(seq 1 45); do
+    if ip -4 addr show "$IF" 2>/dev/null | grep -q "inet " && ping -c1 -W2 "$GW" > /dev/null 2>&1; then
+        say "rtw88 up after $((i * 2)) s: $(iw dev $IF link 2>/dev/null | grep -E 'freq|signal' | tr -s '\t\n' '  ')"
+        exit 0
+    fi
+    sleep 2
+done
+
+say "rtw88: no network after 90 s - falling back to the vendor driver rtl8822ce"
+rm -f /etc/modprobe.d/rosie-wifi-driver.conf
+modprobe -r rtw88_8822ce rtw88_8822c rtw88_pci rtw88_core 2>/dev/null
+modprobe rtl8822ce
+sleep 20
+ip -4 addr show "$IF" | grep -q "inet " && say "vendor driver up" || say "vendor driver: still no address (NetworkManager may need a moment)"

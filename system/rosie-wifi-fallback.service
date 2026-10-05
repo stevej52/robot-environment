@@ -1,0 +1,12 @@
+[Unit]
+Description=Rosie Wi-Fi: check the in-kernel rtw88 driver brought her online, else fall back to the vendor driver
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rosie-wifi-fallback
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
