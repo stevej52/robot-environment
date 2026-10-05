@@ -214,6 +214,11 @@ if [ "$DO_UNITS" -eq 1 ]; then
     run sudo cp "$ENV_SYS"/jetnano-voice.service /etc/systemd/system/jetnano-voice.service
     # Fast DDS without shared memory for every unit (system/fastdds_udp_only.xml, 2026-10-02)
     run sudo install -D -m 644 "$ENV_SYS"/fastdds_udp_only.xml /etc/jetnano/fastdds_udp_only.xml
+    # the Wi-Fi country (the driver hopped channels under WORLD rules and the kernel died, 2026-10-04)
+    run sudo install -m 644 "$ENV_SYS"/modprobe-rosie-wifi-regdom.conf /etc/modprobe.d/rosie-wifi-regdom.conf
+    run sudo install -m 755 "$ENV_SYS"/rosie-blackbox /usr/local/sbin/rosie-blackbox
+    run sudo install -m 644 "$ENV_SYS"/rosie-blackbox.service /etc/systemd/system/rosie-blackbox.service
+    run sudo systemctl enable rosie-blackbox.service
     for u in jetnano-voice jetnano-localize jetnano-slam; do
         run sudo mkdir -p /etc/systemd/system/$u.service.d
         run sudo cp "$ENV_SYS"/$u.service.d/udp-only.conf /etc/systemd/system/$u.service.d/
