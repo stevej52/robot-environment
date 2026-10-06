@@ -1,4 +1,5 @@
-// Rosie: 40-pin header pin 7 (soc_gpio59_pac6, GPIO PAC.06) as a GPIO output.
+// Rosie: 40-pin header pin 7 (soc_gpio59_pac6, GPIO PAC.06) as a GPIO output, and (2026-10-06)
+// pins 32 and 33 as hardware PWM for the camera pan-tilt servos (head_pwm node).
 //
 // It drives the safety relay (CW-025, trigger jumper on H) on the PCA9685's OE pin:
 // ros2_pca9685 holds it high once every channel is at its start value, and a crash or
@@ -11,13 +12,19 @@
 // (tristate 0), plus a pull-down so the pin rests low - relay off - whenever nothing
 // drives it (booting, the node stopped).
 //
+// Pins 32 (soc_gpio19_pg6, pwm7 = 32e0000.pwm, TILT) and 33 (soc_gpio21_ph0, pwm5 =
+// 32c0000.pwm, PAN): NVIDIA's own hdr40 entries (function "gp", pin-group pwm7/pwm5, output
+// driver on), plus a pull-down so the signal rests low - no pulse, servo limp - until head_pwm
+// drives it. The pan-tilt left the PCA9685 (channels 8/9) that day: the board's outputs are gated
+// by the pin-7 relay, whose coil is on the servo rail, dead on the bench (no pack).
+//
 // Build and install: robot-environment scripts/install_system_settings.sh (dtc -@, then
 // appended to the JetsonIO entry's OVERLAYS in /boot/extlinux/extlinux.conf; a reboot).
 /dts-v1/;
 /plugin/;
 
 / {
-	overlay-name = "Rosie header pin 7 GPIO output";
+	overlay-name = "Rosie header pin 7 GPIO output, pins 32/33 PWM";
 	jetson-header-name = "Jetson 40pin Header";
 	compatible = "nvidia,p3768-0000+p3767-0000", "nvidia,p3768-0000+p3767-0001",
 		     "nvidia,p3768-0000+p3767-0003", "nvidia,p3768-0000+p3767-0004",
@@ -37,6 +44,22 @@
 					nvidia,pull = <1>;		/* down: rests low, relay off */
 					nvidia,tristate = <0>;		/* output driver on */
 					nvidia,enable-input = <1>;	/* so its level can be read back */
+				};
+				hdr40-pin32 {
+					nvidia,pins = "soc_gpio19_pg6";
+					nvidia,function = "gp";
+					nvidia,pin-group = "pwm7";
+					nvidia,pull = <1>;		/* down: no pulse until head_pwm drives it */
+					nvidia,tristate = <0>;
+					nvidia,enable-input = <0>;
+				};
+				hdr40-pin33 {
+					nvidia,pins = "soc_gpio21_ph0";
+					nvidia,function = "gp";
+					nvidia,pin-group = "pwm5";
+					nvidia,pull = <1>;
+					nvidia,tristate = <0>;
+					nvidia,enable-input = <0>;
 				};
 			};
 		};
