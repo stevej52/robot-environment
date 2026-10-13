@@ -5,7 +5,8 @@
 # two more silent deaths and a GPU-driver panic in six minutes. Nothing showed whether it
 # was power or a hang. Two things from now on:
 #
-#   at every boot   the chip's own reset reason (POR = the power went, WDT = a hang the
+#   at every boot   the kernel's crash records (pstore) copied aside, see below; and
+#                   the chip's own reset reason (POR = the power went, WDT = a hang the
 #                   hardware watchdog caught, SW = a reboot or a panic's reboot) into the
 #                   journal and /var/log/rosie-blackbox/resets.log
 #   always          ten times a second: module input voltage and current (VDD_IN), the
@@ -24,6 +25,34 @@ echo "$(date '+%F %T') boot $BOOT reset reason: $REASON" | tee -a "$D/resets.log
 logger -t rosie-blackbox "boot $BOOT: last reset reason $REASON"
 # keep the last 20 power logs
 ls -1t "$D"/power-*.log 2>/dev/null | tail -n +21 | xargs -r rm -f
+
+# Crash records (2026-10-12). The kernel keeps only its latest dump (pstore), and systemd-pstore
+# overwrites /var/lib/systemd/pstore with it: the 10-01 panic text (xhci_invalidate_cancelled_tds)
+# was gone when Steve asked for the proof. Every dump not seen before is copied to crash/<when>-<boot>/,
+# once per boot (the marker in /run stops the 6 h re-exec doing it again); the last 40 are kept.
+# console-ramoops = the previous boot's console (after any reboot); dmesg-ramoops = a panic or oops.
+if [ ! -e /run/rosie-blackbox.archived ]; then
+    : > /run/rosie-blackbox.archived
+    C="$D/crash"
+    mkdir -p "$C"
+    touch "$C/.seen"
+    OUT="$C/$(date +%m%d-%H%M)-$BOOT"
+    new=0; panic=""
+    for f in $(find /sys/fs/pstore /var/lib/systemd/pstore -type f 2>/dev/null); do
+        sum=$(sha256sum "$f" | cut -c1-64)
+        grep -q "^$sum" "$C/.seen" && continue
+        mkdir -p "$OUT"
+        cp -p "$f" "$OUT/" && chmod 644 "$OUT/$(basename "$f")" && echo "$sum $f $(date +%F)" >> "$C/.seen"
+        new=$((new + 1))
+        case "$f" in *dmesg-ramoops*) panic="$panic $(basename "$f")" ;; esac
+    done
+    if [ -n "$panic" ]; then
+        logger -p user.warning -t rosie-blackbox "boot $BOOT: the previous boot left a kernel crash record:$panic -> $OUT"
+    elif [ "$new" -gt 0 ]; then
+        logger -t rosie-blackbox "boot $BOOT: $new new pstore record(s) kept in $OUT"
+    fi
+    ls -1dt "$C"/*/ 2>/dev/null | tail -n +41 | xargs -r rm -rf
+fi
 
 INA=""; BAT=""
 for h in /sys/class/hwmon/hwmon*; do

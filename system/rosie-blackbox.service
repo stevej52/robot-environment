@@ -2,7 +2,8 @@
 Description=Rosie black box: the reset reason at boot, and the power rails ten times a second
 # early, so a death soon after boot (the GPU panic at 99 s, 2026-10-04) is covered too
 DefaultDependencies=no
-After=local-fs.target
+# after systemd-pstore has moved the kernel's crash records into /var/lib/systemd/pstore
+After=local-fs.target systemd-pstore.service
 Before=jetnano-robot.service isaac-vo.service
 
 [Service]
