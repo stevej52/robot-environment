@@ -80,6 +80,9 @@ else
 fi
 sudo install -D -m 644 "$HERE/system/logind-robot-power-button.conf" /etc/systemd/logind.conf.d/robot-power-button.conf
 echo "logind: power button shuts down (after a reboot)"
+sudo install -D -m 644 "$HERE/system/sshd-00-keys-only.conf" /etc/ssh/sshd_config.d/00-keys-only.conf
+sudo sshd -t && sudo systemctl daemon-reload && sudo systemctl reload-or-try-restart ssh.service || true
+echo "ssh: keys only, no password logins"
 sudo mkdir -p /etc/firmware/nvidia
 sudo cp -a /usr/lib/firmware/nvidia/ga10b /etc/firmware/nvidia/
 sudo install -D -m 644 "$HERE/system/apt-99-rosie-etc-firmware" /etc/apt/apt.conf.d/99-rosie-etc-firmware
