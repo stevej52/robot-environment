@@ -98,9 +98,15 @@ for bag in "$BASE"/mirror/bags/drive-*; do
     case "$bag" in *-extra) continue ;; esac
     [ -f "$bag/metadata.yaml" ] || continue
     [ -f "$bag/analysis/scorecard.json" ] && continue
+    # tried and failed (2026-10-21: drive-20260928-130937, cut short by that day's kernel panic, was
+    # retried every 5 minutes for weeks): delete scorecard.failed to try again
+    [ -f "$bag/analysis/scorecard.failed" ] && continue
     ls "$bag"/*.mcap > /dev/null 2>&1 || continue
     line=$(timeout 300 nice -n 10 "$PY" "$TOOLS/scorecard.py" "$bag" --audit "$BASE/mirror/audit" 2>&1 | tail -1)
     log "$(basename "$bag"): scorecard - $line"
+    if [ ! -f "$bag/analysis/scorecard.json" ]; then
+        mkdir -p "$bag/analysis" && echo "$(date '+%F %T') $line" > "$bag/analysis/scorecard.failed"
+    fi
 done
 
 # 3. the health page, so it shows the drives and events just pulled (the nightly backup
